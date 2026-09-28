@@ -18,6 +18,9 @@ use serde_json::{Value, json};
 use std::time::Duration;
 
 const PROMPT: &str = include_str!("../prompts/extract-v1.txt");
+/// For personal assistants: atomic facts and events about the user, validated on
+/// LongMemEval_S (see docs/benchmark-results.md).
+const GENERAL_PROMPT: &str = include_str!("../prompts/extract-general.txt");
 const DIGEST_CHARS: usize = 30_000;
 /// Cosine similarity above which a new memory is treated as a duplicate.
 const DUPLICATE_SIMILARITY: f32 = 0.88;
@@ -257,6 +260,15 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
     .to_string();
     let prompt = match &store.config.extraction.prompt_file {
         Some(path) => std::fs::read_to_string(path)?,
+        None if store
+            .config
+            .extraction
+            .general_agents
+            .iter()
+            .any(|a| a.eq_ignore_ascii_case(&session.agent)) =>
+        {
+            GENERAL_PROMPT.to_owned()
+        }
         None => PROMPT.to_owned(),
     };
     let mut output = None;

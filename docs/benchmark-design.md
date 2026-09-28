@@ -4,18 +4,32 @@
 
 ## 1. 调研结论
 
-### 1.1 同类系统
+### 1.1 同类系统（2026-09-29 联网核实）
 
-| 系统 | 形态 | 写入方式 | 检索 | 本地可跑 | 公开成绩（各自口径，不可直接比较） |
-| --- | --- | --- | --- | --- | --- |
-| **ctx**（本项目） | 代理 + MCP，Markdown 真相源 | 会话结束由 LLM 提炼；Agent 显式写 | 本地语义 + 中文分词 BM25 | 是 | 自建召回评测 93%（前 3） |
-| **Mem0** 开源版（`mem0ai` 2.2） | Python 库 / OpenMemory MCP | 每次 add 由 LLM 抽取并合并 | 向量库（Qdrant/Chroma） | 是 | 自报 LongMemEval 93–94%、LoCoMo 92.5%；第三方测开源版 LongMemEval 仅 32.4% |
-| **Graphiti**（Zep 开源内核，0.30） | 时序知识图谱库 + MCP | LLM 抽取实体/事实，带有效期 | 图 + 向量 + BM25 | 需 Neo4j/FalkorDB（Docker） | Zep 自报 LoCoMo 94.7%，第三方 75.1%；LongMemEval 71.2% |
-| **Hindsight**（Vectorize，开源） | 服务 + MCP，四类记忆网络 | 自动抽取 + 反思 | 多路检索 | Docker | 自报 LongMemEval 91.4%，BEAM-10M 64.1% |
-| **Letta**（原 MemGPT） | Agent 框架/服务 | Agent 自行管理核心/归档记忆 | 归档向量检索 | Docker | 无统一公开成绩 |
-| **basic-memory**（0.23） | 本地 Markdown 知识库 + MCP | Agent 显式写 | 全文 + 语义 | 是 | 无 |
-| **MemPalace**（3.10） | 本地分层向量库 + MCP | 自动抽取 | 向量 | 是 | 自报 LongMemEval 96.6%，但只是检索命中（recall@5），不是端到端答对 |
-| **OpenClaw 自带记忆** | Agent 内置（memory_search、工作区笔记） | Agent 自写 | 内置 | 是 | 无 |
+星数、许可证、归档状态取自 GitHub API（2026-09-29）；机制与成绩取自各项目 README 和官方文档。公开成绩口径各异：**R@k 是检索命中率，不是端到端答对率**，模型与题集也不同，不能直接排名。
+
+| 系统 | 星数 / 许可证 | 形态与接入 | 写入方式 | 检索与注入 | 本地可跑 | 公开成绩 |
+| --- | --- | --- | --- | --- | --- | --- |
+| **ctx**（本项目） | — | 协议层代理 + MCP + CLI/REST；Markdown 真相源 | 会话结束 1 次 LLM 提炼（原子记忆）+ 原始对话片段 | 每条新消息/报错按需注入（inject）；主动检索（search）混排片段 | 是（单二进制 + 本地 EmbeddingGemma） | LongMemEval_S 未参与开发的 57 题端到端 93.0%（gemini-3.8-flash-high，自测） |
+| **claude-mem** | 94.8k / Apache-2.0 | 各 Agent 的生命周期钩子（SessionStart、UserPromptSubmit、PostToolUse、Stop、SessionEnd）+ 本地 Bun worker + MCP；支持 Claude Code、OpenClaw、Codex、Gemini、Hermes、Copilot、OpenCode | 自动记录工具调用与决策，AI 压缩成摘要（压缩模型可配） | 会话开始自动注入；MCP 三层渐进检索（search → timeline → get_observations）；SQLite + FTS5 + Chroma | 是 | 未公布 |
+| **Supermemory** | 31.0k / MIT | 本地单二进制（`localhost:6767`）或云；Claude Code、Codex、OpenCode、OpenClaw、Hermes、Cursor 插件，MCP | 自动抽取事实，处理时间变化、矛盾与遗忘；用户画像 | 画像 / 查询 / 两者；本地默认 bge-base-en-v1.5 | 是 | LongMemEval **Recall@15** 95%（检索命中） |
+| **Hindsight**（Vectorize） | 40.7k / MIT | 服务（Postgres + pgvector，推荐 Docker）；MCP、SDK 包装器；Claude Code、Codex、Cursor 等；Hermes 插件 | retain：LLM 抽取事实、实体、时间；reflect：反思形成观点与心智模型 | 语义、BM25、图、时间四路检索 → RRF → 交叉编码器重排 | 是（Docker / pip） | LongMemEval 91.4%，后更新为 94.6%（端到端） |
+| **MemPalace** | 59.3k / MIT | 本地分层向量库（ChromaDB 等）+ 45 个 MCP 工具；Claude Code、Codex、Cursor 钩子 | 原文存储，定期和上下文压缩前自动保存 | 分层检索 + 时序实体图 | 是 | LongMemEval **R@5** 96.6%（检索命中，不用 LLM） |
+| **Mem0** | 66.2k / Apache-2.0 | Python 库；OpenMemory MCP 本地跨客户端共享 | 每次 add 由 LLM 抽取并合并 | 向量为主 | 是 | 自报 LongMemEval 93–94%；第三方测开源版 32.4% |
+| **Graphiti**（Zep 开源内核） | 31.3k / Apache-2.0 | 时序知识图谱库 + MCP | LLM 抽取实体/事实，带有效期 | 图 + 向量 + BM25 | 需 Neo4j/FalkorDB | Zep 自报 LoCoMo 94.7%，第三方 75.1% |
+| **Letta**（原 MemGPT） | 25.0k / Apache-2.0 | Agent 平台 | Agent 自行管理核心/归档记忆 | 归档向量检索 | Docker | 无统一公开成绩 |
+| **basic-memory** | 4.1k / AGPL-3.0 | 本地 Markdown 知识库 + MCP | Agent 显式写 | 全文 + 语义 | 是 | 无 |
+| **ByteRover CLI**（原 Cipher） | 5.0k / Elastic-2.0，**2026-09-27 已归档** | CLI + MCP，22 个以上编码 Agent | **人工整理**（`brv curate`，审核后入库） | `brv query` | 是 | 自报 LongMemEval-S 92.8% |
+
+Agent 原生记忆：
+
+| Agent | 机制 |
+| --- | --- |
+| **OpenClaw** | 每个会话加载 `MEMORY.md`（独立 token 预算）；`/new` 时自动加载今天和昨天的 `memory/日期.md`；`memory_search` 混合检索（向量 + 关键词）；上下文压缩前静默提醒 Agent 保存；可换 Honcho、LanceDB 后端 |
+| **Hermes** | `MEMORY.md` 最多 2,200 字符、`USER.md` 最多 1,375 字符，会话开始作为快照放进系统提示；Agent 用 memory 工具增删改；`session_search` 用 SQLite FTS5 返回原始消息；内置 7 个外部记忆插件（Honcho、OpenViking、Mem0、Holographic、RetainDB、ByteRover、Supermemory），与内置记忆并行 |
+| **Claude Code** | `CLAUDE.md`（人写）+ 自动记忆（Claude 自己写，默认开启；每个仓库一个 `MEMORY.md` 索引，前 200 行或 25 KB 每次加载，主题文件按需读取） |
+
+**对 ctx 的含义。** 定位最接近的是 claude-mem：本地、自动记录、支持同一批 Agent，采用量高出几个数量级；差异在于 ctx 在协议层代理（不需要每个 Agent 写钩子）、按步按需注入（而不是会话开始一次）、两层记忆（原子记忆 + 原始片段）、中文分词，以及有端到端实测。Hermes 和 OpenClaw 已经有“记忆插件”位置，Hindsight、Supermemory、Mem0、Honcho 都在其中，ctx 需要以插件形式进入同一个列表。
 
 研究中的方法与基线：A-Mem、MemOS、SimpleMem、“简单但强”的对话记忆基线（arXiv 2511.17208）；MERIT 论文的对比显示，换一种记忆实现能让任务成功率相差多达 60 个百分点，结构化事实库比纯向量检索稳定。
 
@@ -107,6 +121,8 @@
 | 笔记文件（CLAUDE.md / AGENTS.md 式） | Agent 被告知可以把要点写进项目笔记文件，每次自动加载 |
 | ctx（代理 + MCP） | 自动提炼 + 自动注入 |
 | ctx（仅 MCP） | 只靠 Agent 主动 recall/remember，用于拆分“自动注入”的贡献 |
+| ctx（OpenClaw 插件） | `ctx-plugin`：作为 OpenClaw 记忆插件接入（钩子记录与注入 + memory_search 等工具），不走代理；与 claude-mem 接入方式对等 |
+| **claude-mem** | 定位最接近的竞品：OpenClaw 插件（钩子自动记录 + 会话开始注入 + MCP 检索），压缩模型与其他系统同为 `gemini-3.8-flash-high` |
 | Mem0（OpenMemory MCP） | |
 | basic-memory（MCP） | |
 | Graphiti MCP、Hindsight MCP | 第二批，依赖 Docker |
@@ -177,3 +193,5 @@ class MemorySystem:
 - [Hindsight](https://github.com/vectorize-io/hindsight)，[论文](https://arxiv.org/pdf/2512.12818)
 - [Memory MCP Servers Compared（Unblocked）](https://getunblocked.com/blog/memory-mcp-servers-compared/)
 - [Awesome-Agent-Memory](https://github.com/TeleAI-UAGI/Awesome-Agent-Memory)
+- [claude-mem](https://github.com/thedotmack/claude-mem)，[Supermemory](https://github.com/supermemoryai/supermemory)，[MemPalace](https://github.com/MemPalace/mempalace)，[ByteRover CLI](https://github.com/campfirein/byterover-cli)
+- [Hermes Agent 记忆](https://hermes-agent.nousresearch.com/docs/user-guide/features/memory)，[OpenClaw 记忆](https://docs.openclaw.ai/concepts/memory)，[Claude Code 记忆](https://code.claude.com/docs/en/memory)

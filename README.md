@@ -9,6 +9,13 @@ ctx 让编码 Agent 跨会话记住东西：项目的命令和约定、踩过的
 - **Agent 主动读写。** MCP 工具 `recall`、`remember`、`forget`、`expand`。主动检索（MCP、`ctx recall`、REST）按相关度返回更多条，并附带相关的原始对话片段：提炼漏掉的细节（金额、名字、助手给过的推荐）仍然找得回来。
 - **你可以掌控。** 记忆是 `~/.ctx/memory/*.md` 文件（YAML 头 + 正文），由独立 git 仓库记录每次修改；可以手动编辑、在面板里审核，或用 CLI 管理。自动提炼永远不会自动启用规则；Agent 提议的规则要你批准。
 
+**作为插件接入（不走代理）。** Hermes 和 OpenClaw 都有“记忆插件”位置，可以直接选 ctx：
+
+- Hermes：[`integrations/hermes/ctx`](integrations/hermes/ctx/README.md)（`memory.provider: ctx`），每轮前注入、每轮后记录、会话结束提炼，工具 `ctx_recall` / `ctx_remember` / `ctx_forget`。
+- OpenClaw：[`integrations/openclaw/ctx-memory`](integrations/openclaw/ctx-memory/README.md)（`plugins.slots.memory: "ctx-memory"`），工具与内置记忆同名（`memory_search` / `memory_get`），外加 `memory_store` / `memory_forget`。
+
+插件和代理二选一，不要同时启用。
+
 项目自动识别：代理从 Agent 提示词里的工作目录（Claude Code、Codex、OpenClaw 都会写）取 git 仓库名；MCP 用启动目录；也可以用 `X-Ctx-Project` 请求头或 `/a/AGENT/p/PROJECT/v1` 路由指定。项目记忆只在该项目里出现，`global` 记忆处处可见。
 
 ## 安装与接入
@@ -61,6 +68,7 @@ Python SDK 在 `sdk/python`，TypeScript SDK 在 `sdk/typescript`：`remember`�
 | `embedding.enabled` / `model` | true / embeddinggemma-300m-q | 关闭后只用关键词检索 |
 | `extraction.enabled` / `idle_minutes` | true / 10 | 会话空闲多久后提炼 |
 | `extraction.daily_llm_calls` | 100 | 引擎每日模型调用上限 |
+| `extraction.general_agents` | [hermes] | 这些 Agent 是个人助理而非编码 Agent，会话用通用提炼提示词（关于用户的事实和事件） |
 | `mcp_tools` | default | `full` 额外列出 `flag_memory`、`set_intent` |
 | `debug_capture` | false | 保存每步完整请求，供调试面板查看 |
 | `experimental.*` | 全部关闭 | Gate、ActionGuard、上下文驱逐、定时维护，见架构文档 |

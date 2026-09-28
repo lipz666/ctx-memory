@@ -128,6 +128,9 @@ pub struct ExtractionConfig {
     /// Allow extraction to create global memories; when false everything is scoped to the
     /// session's project (isolated namespaces, e.g. benchmarks).
     pub global_scope: bool,
+    /// Agents that are personal assistants rather than coding agents: their sessions
+    /// use the general extraction prompt (facts and events about the user).
+    pub general_agents: Vec<String>,
 }
 impl Default for ExtractionConfig {
     fn default() -> Self {
@@ -137,6 +140,7 @@ impl Default for ExtractionConfig {
             daily_llm_calls: 100,
             prompt_file: None,
             global_scope: true,
+            general_agents: vec!["hermes".into()],
         }
     }
 }

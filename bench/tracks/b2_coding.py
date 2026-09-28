@@ -11,6 +11,8 @@ memory available across sessions:
   openclaw-native  OpenClaw's built-in workspace memory (MEMORY.md, memory/) kept
   ctx              ctx proxy (automatic extraction and injection) + ctx MCP tools
   ctx-mcp          ctx MCP tools only (the Agent decides to remember/recall)
+  ctx-plugin       ctx as OpenClaw's memory plugin (integrations/openclaw/ctx-memory): hooks
+                   record and inject, memory_search/memory_store tools; no proxy
   mem0-mcp         Mem0 OSS via MCP (add_memory, search_memories)
 """
 import argparse
@@ -94,7 +96,7 @@ class Services:
         self.config = config
         self.ctx = None
         self.embed = None
-        if config in ("ctx", "ctx-mcp"):
+        if config in ("ctx", "ctx-mcp", "ctx-plugin"):
             self.ctx = CtxService(workdir / f"b2-{config}-home", embed_workers=2, agents=("openclaw",)).start()
         if config == "mem0-mcp":
             self.embed = CtxService(workdir / "b2-embed-home", embed_workers=2).start()
@@ -130,6 +132,12 @@ def openclaw_config(config, services, workspace, project, session_key, mem0_dir)
                                    "MEM0_TELEMETRY": "False"}}
     if servers:
         config_json["mcp"] = {"servers": servers}
+    if config == "ctx-plugin":
+        config_json["plugins"] = {
+            "load": {"paths": [str(BENCH.parent / "integrations/openclaw/ctx-memory")]},
+            "slots": {"memory": "ctx-memory"},
+            "entries": {"ctx-memory": {"enabled": True, "hooks": {"allowConversationAccess": True}, "config": {"project": project}}},
+        }
     return config_json
 
 
@@ -170,6 +178,8 @@ def run_scenario(config, services, scenario, distractors, run, workroot, out):
         state.mkdir(parents=True, exist_ok=True)
         (state / "openclaw.json").write_text(json.dumps(openclaw_config(config, services, repo, project, key, root / f"mem0-{session['repo']}")))
         env = dict(os.environ, OPENCLAW_STATE_DIR=str(state), OPENCLAW_CONFIG_PATH=str(state / "openclaw.json"))
+        if services.ctx:
+            env["CTX_HOME"] = str(services.ctx.home)  # the ctx-memory plugin finds the daemon here
         started = time.time()
         try:
             proc = subprocess.run(["openclaw", "agent", "--local", "--agent", "main", "--session-id", key, "--message", session["message"],
@@ -185,9 +195,11 @@ def run_scenario(config, services, scenario, distractors, run, workroot, out):
         except ValueError:
             pass
         extraction = None
-        if config == "ctx":
+        if config in ("ctx", "ctx-plugin"):
+            # The plugin records sessions as openclaw:<session id>; the proxy under the session header.
+            ctx_key = f"openclaw:{key}" if config == "ctx-plugin" else key
             try:
-                extraction = services.ctx.request(f"/api/v1/sessions/{urllib.parse.quote(key, safe='')}/extract?wait=true", {})
+                extraction = services.ctx.request(f"/api/v1/sessions/{urllib.parse.quote(ctx_key, safe='')}/extract?wait=true", {})
                 extraction = {k: len(extraction.get(k, [])) for k in ("created", "updated", "skipped")}
             except Exception as error:  # noqa: BLE001
                 extraction = {"error": str(error)[:200]}

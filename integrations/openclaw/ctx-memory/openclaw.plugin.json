@@ -1,0 +1,22 @@
+{
+  "id": "ctx-memory",
+  "name": "ctx memory",
+  "description": "Long-term memory from the local ctx daemon: per-turn recall, automatic distillation, searchable conversation excerpts.",
+  "kind": "memory",
+  "contracts": {
+    "tools": ["memory_search", "memory_get", "memory_store", "memory_forget"]
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "url": { "type": "string", "description": "ctx API base URL (default: from $CTX_HOME/config.yaml)" },
+      "project": { "type": "string", "description": "Memory scope (default: the workspace directory name)" },
+      "inject": { "type": "integer", "minimum": 0, "maximum": 10, "default": 3, "description": "Memories injected per turn (0 disables)" },
+      "autoCapture": { "type": "boolean", "default": true, "description": "Record each run's conversation in ctx" }
+    }
+  }
+}

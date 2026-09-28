@@ -1,0 +1,14 @@
+{
+  "name": "@ctx/openclaw-memory",
+  "version": "0.1.0",
+  "description": "ctx long-term memory as an OpenClaw memory plugin",
+  "type": "module",
+  "license": "MIT",
+  "openclaw": {
+    "extensions": ["./index.js"],
+    "compat": {
+      "pluginApi": ">=2026.6.0",
+      "minGatewayVersion": "2026.6.0"
+    }
+  }
+}

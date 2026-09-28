@@ -1,0 +1,9 @@
+name: ctx
+version: 0.1.0
+description: "ctx — local long-term memory: per-turn recall, automatic distillation at session end, searchable conversation excerpts, user-approved rules."
+pip_dependencies: []
+requires_env: []
+hooks:
+  - on_session_end
+  - on_session_switch
+  - on_memory_write
