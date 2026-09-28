@@ -1,0 +1,51 @@
+{
+  "model": "gemini-3.8-flash-high",
+  "task1": {
+    "agent_exit": 0,
+    "verified": true,
+    "seconds": 602.9,
+    "project": "billing",
+    "steps": 25
+  },
+  "extraction": {
+    "status": "done",
+    "error": null,
+    "seconds": 87.2
+  },
+  "memories": [
+    {
+      "type": "fact",
+      "scope": "global",
+      "source": "user",
+      "status": "active",
+      "title": "使用中文回答",
+      "body": "回答用户时一律使用中文。"
+    },
+    {
+      "type": "fact",
+      "scope": "billing",
+      "source": "user",
+      "status": "active",
+      "title": "代码合并分支与审核要求",
+      "body": "本项目修好的代码要合并到 release/2026-q4 分支，合并前必须找 @wang-li 做代码审核。"
+    }
+  ],
+  "task2": {
+    "agent_exit": 0,
+    "seconds": 44.1,
+    "steps": 1,
+    "injected_memories": 1,
+    "answer_has_branch": true,
+    "answer_has_reviewer": true,
+    "answer": "代码应该合并到 **`release/2026-q4`** 分支，合并前必须找 **@wang-li** 进行代码审核。"
+  },
+  "stats": {
+    "memories": 2,
+    "injections": 1,
+    "extracted_sessions": 1,
+    "engine_llm_calls": 1
+  },
+  "extraction_log": [
+    "ctx extraction: {\"results\":[{\"created\":[\"mem_01M3HJYAPZ30JDPQQQ61R4X5TD\",\"mem_01M3HJYAT5XP0A9APPGZ6Z67NF\"],\"session\":\"live-billing-1\",\"skip_reason\":null,\"skipped\":[],\"updated\":[]}],\"sessions\":1}"
+  ]
+}

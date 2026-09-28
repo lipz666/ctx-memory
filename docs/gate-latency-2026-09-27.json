@@ -1,0 +1,30 @@
+{
+  "gemini-3.8-flash-high": {
+    "samples": 20,
+    "failures": 0,
+    "p50_ms": 6452,
+    "p95_ms": 13604,
+    "max_ms": 13890,
+    "within_300ms": 0,
+    "within_1500ms": 0,
+    "json_parsed": 20,
+    "reported_models": [
+      "gemini-3.8-flash"
+    ],
+    "mean_reasoning_tokens": 150.0
+  },
+  "gemini-3.1-flash-lite": {
+    "samples": 20,
+    "failures": 0,
+    "p50_ms": 3293,
+    "p95_ms": 7358,
+    "max_ms": 7380,
+    "within_300ms": 0,
+    "within_1500ms": 0,
+    "json_parsed": 20,
+    "reported_models": [
+      "gemini-3.1-flash-lite"
+    ],
+    "mean_reasoning_tokens": 0.0
+  }
+}

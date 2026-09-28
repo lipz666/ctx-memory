@@ -1,0 +1,436 @@
+{
+  "kind": "paired_openclaw_metered",
+  "model": "gemini-3.8-flash-high",
+  "tasks": 3,
+  "repeats": 1,
+  "results": [
+    {
+      "task_id": "inventory-atomic-retry",
+      "arm": "ctx",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 235.026,
+      "reported_usage": {
+        "input_tokens": 253559,
+        "output_tokens": 3363,
+        "cache_read_tokens": 598711,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 852270,
+        "cache_hit_rate": 0.7024898213007615
+      },
+      "proxy_usage": {
+        "steps": 19,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 852270,
+        "output_tokens": 3363,
+        "cached_input_tokens": 598711,
+        "cache_hit_rate": 0.7025,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "cost": {
+          "uncached_input_tokens": 253559,
+          "cached_input_tokens": 598711,
+          "output_tokens": 3363,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 19,
+        "totals": {
+          "system": 298866,
+          "agent_tools": 443114,
+          "ctx_mcp_tools": 0,
+          "history": 101831,
+          "other_fields": 8459,
+          "ctx_added": 0,
+          "ctx_evicted": 0,
+          "evictable_old_tool_results": 0,
+          "actual_input": 852270,
+          "cached_input": 598711,
+          "uncached_input": 253559,
+          "output": 3363
+        },
+        "share_of_input": {
+          "system": 0.3507,
+          "agent_tools": 0.5199,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.1195,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.0
+        },
+        "fixed_prefix_per_step": 39052,
+        "steps_where_default_eviction_fires": 0,
+        "modified_steps": 0,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 0,
+      "order": 0
+    },
+    {
+      "task_id": "inventory-atomic-retry",
+      "arm": "direct",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 291.624,
+      "reported_usage": {
+        "input_tokens": 331280,
+        "output_tokens": 4240,
+        "cache_read_tokens": 989040,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 1320320,
+        "cache_hit_rate": 0.7490911294231701
+      },
+      "proxy_usage": {
+        "steps": 28,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 1320320,
+        "output_tokens": 4240,
+        "cached_input_tokens": 989040,
+        "cache_hit_rate": 0.7491,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "cost": {
+          "uncached_input_tokens": 331280,
+          "cached_input_tokens": 989040,
+          "output_tokens": 4240,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 28,
+        "totals": {
+          "system": 371523,
+          "agent_tools": 550713,
+          "ctx_mcp_tools": 0,
+          "history": 387611,
+          "other_fields": 10474,
+          "ctx_added": 0,
+          "ctx_evicted": 0,
+          "evictable_old_tool_results": 166998,
+          "actual_input": 1320320,
+          "cached_input": 989040,
+          "uncached_input": 331280,
+          "output": 4240
+        },
+        "share_of_input": {
+          "system": 0.2814,
+          "agent_tools": 0.4171,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.2936,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.1265
+        },
+        "fixed_prefix_per_step": 32937,
+        "steps_where_default_eviction_fires": 0,
+        "modified_steps": 0,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 0,
+      "order": 1
+    },
+    {
+      "task_id": "ledger-dedup-decimal",
+      "arm": "ctx",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 364.411,
+      "reported_usage": {
+        "input_tokens": 222731,
+        "output_tokens": 7090,
+        "cache_read_tokens": 1329987,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 1552718,
+        "cache_hit_rate": 0.8565541199367819
+      },
+      "proxy_usage": {
+        "steps": 33,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 1552718,
+        "output_tokens": 7090,
+        "cached_input_tokens": 1329987,
+        "cache_hit_rate": 0.8566,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "cost": {
+          "uncached_input_tokens": 222731,
+          "cached_input_tokens": 1329987,
+          "output_tokens": 7090,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 33,
+        "totals": {
+          "system": 519108,
+          "agent_tools": 769657,
+          "ctx_mcp_tools": 0,
+          "history": 249109,
+          "other_fields": 14844,
+          "ctx_added": 0,
+          "ctx_evicted": 0,
+          "evictable_old_tool_results": 0,
+          "actual_input": 1552718,
+          "cached_input": 1329987,
+          "uncached_input": 222731,
+          "output": 7090
+        },
+        "share_of_input": {
+          "system": 0.3343,
+          "agent_tools": 0.4957,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.1604,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.0
+        },
+        "fixed_prefix_per_step": 39053,
+        "steps_where_default_eviction_fires": 0,
+        "modified_steps": 0,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 0,
+      "order": 0
+    },
+    {
+      "task_id": "ledger-dedup-decimal",
+      "arm": "direct",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 379.664,
+      "reported_usage": {
+        "input_tokens": 233886,
+        "output_tokens": 5774,
+        "cache_read_tokens": 1529415,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 1763301,
+        "cache_hit_rate": 0.8673590045034852
+      },
+      "proxy_usage": {
+        "steps": 37,
+        "actual_models": [
+          "gemini-3.8-flash",
+          "gemini-3.8-flash-control"
+        ],
+        "input_tokens": 1763577,
+        "output_tokens": 5860,
+        "cached_input_tokens": 1529415,
+        "cache_hit_rate": 0.8672,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "cost": {
+          "uncached_input_tokens": 234162,
+          "cached_input_tokens": 1529415,
+          "output_tokens": 5860,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 37,
+        "totals": {
+          "system": 583382,
+          "agent_tools": 864663,
+          "ctx_mcp_tools": 0,
+          "history": 299150,
+          "other_fields": 16380,
+          "ctx_added": 0,
+          "ctx_evicted": 0,
+          "evictable_old_tool_results": 9957,
+          "actual_input": 1763577,
+          "cached_input": 1529415,
+          "uncached_input": 234162,
+          "output": 5860
+        },
+        "share_of_input": {
+          "system": 0.3308,
+          "agent_tools": 0.4903,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.1696,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.0056
+        },
+        "fixed_prefix_per_step": 39136,
+        "steps_where_default_eviction_fires": 0,
+        "modified_steps": 0,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 0,
+      "order": 1
+    },
+    {
+      "task_id": "clamp-regression",
+      "arm": "direct",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 107.834,
+      "reported_usage": {
+        "input_tokens": 141090,
+        "output_tokens": 699,
+        "cache_read_tokens": 312248,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 453338,
+        "cache_hit_rate": 0.6887752626075908
+      },
+      "proxy_usage": {
+        "steps": 18,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 453338,
+        "output_tokens": 699,
+        "cached_input_tokens": 312248,
+        "cache_hit_rate": 0.6888,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "cost": {
+          "uncached_input_tokens": 141090,
+          "cached_input_tokens": 312248,
+          "output_tokens": 699,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 18,
+        "totals": {
+          "system": 169029,
+          "agent_tools": 250553,
+          "ctx_mcp_tools": 0,
+          "history": 28989,
+          "other_fields": 4764,
+          "ctx_added": 0,
+          "ctx_evicted": 0,
+          "evictable_old_tool_results": 0,
+          "actual_input": 453338,
+          "cached_input": 312248,
+          "uncached_input": 141090,
+          "output": 699
+        },
+        "share_of_input": {
+          "system": 0.3729,
+          "agent_tools": 0.5527,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.0639,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.0
+        },
+        "fixed_prefix_per_step": 23310,
+        "steps_where_default_eviction_fires": 0,
+        "modified_steps": 0,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 0,
+      "order": 0
+    },
+    {
+      "task_id": "clamp-regression",
+      "arm": "ctx",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 93.645,
+      "reported_usage": {
+        "input_tokens": 112276,
+        "output_tokens": 605,
+        "cache_read_tokens": 304063,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 416339,
+        "cache_hit_rate": 0.7303255279952154
+      },
+      "proxy_usage": {
+        "steps": 17,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 416339,
+        "output_tokens": 605,
+        "cached_input_tokens": 304063,
+        "cache_hit_rate": 0.7303,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "cost": {
+          "uncached_input_tokens": 112276,
+          "cached_input_tokens": 304063,
+          "output_tokens": 605,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 17,
+        "totals": {
+          "system": 156255,
+          "agent_tools": 231672,
+          "ctx_mcp_tools": 0,
+          "history": 24010,
+          "other_fields": 4402,
+          "ctx_added": 0,
+          "ctx_evicted": 0,
+          "evictable_old_tool_results": 0,
+          "actual_input": 416339,
+          "cached_input": 304063,
+          "uncached_input": 112276,
+          "output": 605
+        },
+        "share_of_input": {
+          "system": 0.3753,
+          "agent_tools": 0.5565,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.0577,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.0
+        },
+        "fixed_prefix_per_step": 22819,
+        "steps_where_default_eviction_fires": 0,
+        "modified_steps": 0,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 0,
+      "order": 1
+    }
+  ],
+  "note": "Success uses each task's verifier. Both arms are metered by ctx unless --direct-via-gateway. USD appears only with explicit prices."
+}

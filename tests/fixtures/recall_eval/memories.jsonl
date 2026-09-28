@@ -1,0 +1,32 @@
+{"key": "g01", "scope": "global", "type": "fact", "content": "用户偏好：回答和文档都使用简体中文，代码注释用英文"}
+{"key": "g02", "scope": "global", "type": "lesson", "content": "git push 之前先运行 pre-commit hooks；不要用 --no-verify 跳过检查"}
+{"key": "g03", "scope": "global", "type": "fact", "content": "Python projects should use uv for dependency management (uv add / uv sync), never pip install directly"}
+{"key": "g04", "scope": "global", "type": "lesson", "content": "When a test is flaky, rerun it in isolation with -p no:randomly before changing code"}
+{"key": "g05", "scope": "global", "type": "fact", "content": "本机的 Docker 使用 colima，启动命令是 colima start --cpu 4 --memory 8"}
+{"key": "g06", "scope": "global", "type": "fact", "content": "Commit messages follow Conventional Commits: feat:, fix:, chore:, docs:"}
+{"key": "g07", "scope": "global", "type": "lesson", "content": "用 sed -i 时 macOS 需要写成 sed -i ''，否则会报 invalid command code"}
+{"key": "g08", "scope": "global", "type": "fact", "content": "The user's GitHub handle is lpz and PRs should target the main branch"}
+{"key": "g09", "scope": "global", "type": "fact", "content": "Weekly team sync is on Tuesday 10:00 Beijing time"}
+{"key": "g10", "scope": "global", "type": "fact", "content": "服务器 SSH 统一走跳板机 bastion.internal，端口 2222"}
+{"key": "p01", "scope": "payments-svc", "type": "lesson", "content": "部署 payments-svc 之前必须先执行数据库迁移 (make migrate)，否则订单表会缺字段导致 500"}
+{"key": "p02", "scope": "payments-svc", "type": "fact", "content": "payments-svc 金额一律用 Decimal 存储，保留两位小数，舍入用 ROUND_HALF_UP"}
+{"key": "p03", "scope": "payments-svc", "type": "fact", "content": "The staging database for payments-svc is read-only on Fridays; schedule migrations for Thursday"}
+{"key": "p04", "scope": "payments-svc", "type": "lesson", "content": "Stripe webhook 签名校验失败时，先检查是否用了 raw body；JSON 解析后的 body 会导致签名不匹配"}
+{"key": "p05", "scope": "payments-svc", "type": "fact", "content": "payments-svc integration tests need the STRIPE_TEST_KEY env var and a running local Postgres on port 5433"}
+{"key": "p06", "scope": "payments-svc", "type": "skill", "content": "Refund flow: create refund record, call Stripe refunds API with an idempotency key, mark the ledger entry reversed, emit refund.completed"}
+{"key": "p07", "scope": "payments-svc", "type": "fact", "content": "对账任务每天凌晨 2 点运行，重复导出的记录按 (source, external_id) 去重"}
+{"key": "p08", "scope": "payments-svc", "type": "lesson", "content": "Error 'psycopg.errors.UniqueViolation: duplicate key value violates unique constraint ledger_pkey' means the reconcile job ran twice; check the cron lock before retrying"}
+{"key": "a01", "scope": "atlas-web", "type": "fact", "content": "atlas-web uses pnpm, not npm or yarn; CI runs pnpm install --frozen-lockfile"}
+{"key": "a02", "scope": "atlas-web", "type": "fact", "content": "atlas-web 的组件样式统一用 Tailwind，禁止新增 CSS Modules 文件"}
+{"key": "a03", "scope": "atlas-web", "type": "lesson", "content": "Next.js hydration mismatch in atlas-web usually comes from Date.now() or locale formatting during SSR; move it into useEffect"}
+{"key": "a04", "scope": "atlas-web", "type": "fact", "content": "atlas-web 的 API 基址在 .env.local 的 NEXT_PUBLIC_API_BASE 配置，本地默认 http://localhost:8080"}
+{"key": "a05", "scope": "atlas-web", "type": "skill", "content": "Adding a page in atlas-web: create app/<route>/page.tsx, register it in nav.config.ts, add an e2e test under tests/e2e"}
+{"key": "a06", "scope": "atlas-web", "type": "lesson", "content": "Playwright 测试在 CI 上超时通常是没装浏览器，需要先执行 pnpm exec playwright install --with-deps"}
+{"key": "a07", "scope": "atlas-web", "type": "fact", "content": "atlas-web 的界面文案放在 locales/zh-CN.json 和 locales/en.json，新增文案两个文件都要加"}
+{"key": "a08", "scope": "atlas-web", "type": "fact", "content": "Design system colors live in tailwind.config.ts under theme.extend.colors; never hardcode hex values in components"}
+{"key": "c01", "scope": "ctx-engine", "type": "fact", "content": "ctx 的记忆以 Markdown 文件为真相源，存放在 ~/.ctx/memory，SQLite 索引可随时重建"}
+{"key": "c02", "scope": "ctx-engine", "type": "lesson", "content": "修改 ctx 的 Rust 代码后要跑 cargo clippy --all-targets -- -D warnings，CI 把警告当错误"}
+{"key": "c03", "scope": "ctx-engine", "type": "fact", "content": "ctx proxy listens only on 127.0.0.1:7788 and every API call needs the X-Ctx-Token header"}
+{"key": "c04", "scope": "ctx-engine", "type": "lesson", "content": "OpenClaw 通过 ctx 代理时 provider 要用 api: openai-completions，否则请求路径不对"}
+{"key": "c05", "scope": "ctx-engine", "type": "fact", "content": "The gateway reports model gemini-3.8-flash even when gemini-3.8-flash-high is requested"}
+{"key": "c06", "scope": "ctx-engine", "type": "skill", "content": "发布 ctx 新版本：改 Cargo.toml 版本号，cargo build --release，复制到 ~/.ctx/bin/ctx，再用 launchctl kickstart 重启服务"}

@@ -1,0 +1,25 @@
+{
+  "tasks": [
+    {
+      "id": "inventory-atomic-retry",
+      "source_dir": "inventory",
+      "prompt": "Fix the reservation worker according to README.md. Run a local check before finishing.",
+      "verify": ["python3", "${MANIFEST_DIR}/../../verify_ab_workloads.py", "inventory"],
+      "timeout_seconds": 240
+    },
+    {
+      "id": "ledger-dedup-decimal",
+      "source_dir": "ledger",
+      "prompt": "Fix the payment reconciliation according to README.md. Run a local check before finishing.",
+      "verify": ["python3", "${MANIFEST_DIR}/../../verify_ab_workloads.py", "ledger"],
+      "timeout_seconds": 240
+    },
+    {
+      "id": "clamp-regression",
+      "source_dir": "clamp",
+      "prompt": "Fix the clamp regression in calculator.py so its tests pass. Run the tests before finishing.",
+      "verify": ["python3", "-m", "unittest", "discover"],
+      "timeout_seconds": 180
+    }
+  ]
+}

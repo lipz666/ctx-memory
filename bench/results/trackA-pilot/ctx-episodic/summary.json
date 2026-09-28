@@ -1,0 +1,26 @@
+{
+  "system": "ctx-episodic",
+  "questions": 20,
+  "accuracy": 0.75,
+  "by_type": {
+    "abstention": "2/3",
+    "knowledge-update": "1/2",
+    "multi-session": "4/6",
+    "single-session-assistant": "2/2",
+    "single-session-preference": "1/2",
+    "single-session-user": "2/2",
+    "temporal-reasoning": "3/3"
+  },
+  "errors": 0,
+  "wall_seconds": 22,
+  "ingest_seconds_per_question_p50": 0.0,
+  "search_ms_p50": 946.6,
+  "search_ms_p95": 1188.5,
+  "kept_tokens_mean": 1555,
+  "usage": {
+    "memories": 3382,
+    "engine_llm_calls": 988,
+    "extracted_sessions": 980
+  },
+  "budget_tokens": 2000
+}

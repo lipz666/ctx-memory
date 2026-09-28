@@ -1,0 +1,333 @@
+{
+  "tasks": {
+    "billing-noisy-ci": {
+      "ctx": {
+        "tasks": 3,
+        "successes": 3,
+        "steps": 124,
+        "input_per_step": 60909,
+        "cache_hit_rate": 0.7495,
+        "modified_requests": 75,
+        "evicted_tool_results": 189,
+        "per_task": {
+          "uncached_input_tokens": 630668,
+          "cached_input_tokens": 1886900,
+          "output_tokens": 3212,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "per_successful_task": {
+          "uncached_input_tokens": 630668,
+          "cached_input_tokens": 1886900,
+          "output_tokens": 3212,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "usd_per_successful_task": null
+      },
+      "direct": {
+        "tasks": 3,
+        "successes": 3,
+        "steps": 110,
+        "input_per_step": 80983,
+        "cache_hit_rate": 0.8105,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "per_task": {
+          "uncached_input_tokens": 562568,
+          "cached_input_tokens": 2406793,
+          "output_tokens": 3164,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "per_successful_task": {
+          "uncached_input_tokens": 562568,
+          "cached_input_tokens": 2406793,
+          "output_tokens": 3164,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "usd_per_successful_task": null
+      },
+      "pairs": [
+        {
+          "repeat": 0,
+          "both_succeeded": true,
+          "input_ratio": 0.6,
+          "uncached_input_ratio": 0.819,
+          "steps": [
+            31,
+            40
+          ],
+          "input_per_step_ratio": 0.775
+        },
+        {
+          "repeat": 1,
+          "both_succeeded": true,
+          "input_ratio": 1.11,
+          "uncached_input_ratio": 2.048,
+          "steps": [
+            44,
+            25
+          ],
+          "input_per_step_ratio": 0.631
+        },
+        {
+          "repeat": 2,
+          "both_succeeded": true,
+          "input_ratio": 0.897,
+          "uncached_input_ratio": 0.953,
+          "steps": [
+            49,
+            45
+          ],
+          "input_per_step_ratio": 0.824
+        }
+      ]
+    },
+    "inventory-atomic-retry": {
+      "ctx": {
+        "tasks": 1,
+        "successes": 1,
+        "steps": 19,
+        "input_per_step": 44856,
+        "cache_hit_rate": 0.7025,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "per_task": {
+          "uncached_input_tokens": 253559,
+          "cached_input_tokens": 598711,
+          "output_tokens": 3363,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "per_successful_task": {
+          "uncached_input_tokens": 253559,
+          "cached_input_tokens": 598711,
+          "output_tokens": 3363,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "usd_per_successful_task": null
+      },
+      "direct": {
+        "tasks": 1,
+        "successes": 1,
+        "steps": 28,
+        "input_per_step": 47154,
+        "cache_hit_rate": 0.7491,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "per_task": {
+          "uncached_input_tokens": 331280,
+          "cached_input_tokens": 989040,
+          "output_tokens": 4240,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "per_successful_task": {
+          "uncached_input_tokens": 331280,
+          "cached_input_tokens": 989040,
+          "output_tokens": 4240,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "usd_per_successful_task": null
+      },
+      "pairs": [
+        {
+          "repeat": 0,
+          "both_succeeded": true,
+          "input_ratio": 0.646,
+          "uncached_input_ratio": 0.765,
+          "steps": [
+            19,
+            28
+          ],
+          "input_per_step_ratio": 0.951
+        }
+      ]
+    },
+    "ledger-dedup-decimal": {
+      "ctx": {
+        "tasks": 1,
+        "successes": 1,
+        "steps": 33,
+        "input_per_step": 47052,
+        "cache_hit_rate": 0.8566,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "per_task": {
+          "uncached_input_tokens": 222731,
+          "cached_input_tokens": 1329987,
+          "output_tokens": 7090,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "per_successful_task": {
+          "uncached_input_tokens": 222731,
+          "cached_input_tokens": 1329987,
+          "output_tokens": 7090,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "usd_per_successful_task": null
+      },
+      "direct": {
+        "tasks": 1,
+        "successes": 1,
+        "steps": 37,
+        "input_per_step": 47664,
+        "cache_hit_rate": 0.8672,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "per_task": {
+          "uncached_input_tokens": 234162,
+          "cached_input_tokens": 1529415,
+          "output_tokens": 5860,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "per_successful_task": {
+          "uncached_input_tokens": 234162,
+          "cached_input_tokens": 1529415,
+          "output_tokens": 5860,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "usd_per_successful_task": null
+      },
+      "pairs": [
+        {
+          "repeat": 0,
+          "both_succeeded": true,
+          "input_ratio": 0.88,
+          "uncached_input_ratio": 0.951,
+          "steps": [
+            33,
+            37
+          ],
+          "input_per_step_ratio": 0.987
+        }
+      ]
+    },
+    "clamp-regression": {
+      "direct": {
+        "tasks": 1,
+        "successes": 1,
+        "steps": 18,
+        "input_per_step": 25185,
+        "cache_hit_rate": 0.6888,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "per_task": {
+          "uncached_input_tokens": 141090,
+          "cached_input_tokens": 312248,
+          "output_tokens": 699,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "per_successful_task": {
+          "uncached_input_tokens": 141090,
+          "cached_input_tokens": 312248,
+          "output_tokens": 699,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "usd_per_successful_task": null
+      },
+      "ctx": {
+        "tasks": 1,
+        "successes": 1,
+        "steps": 17,
+        "input_per_step": 24491,
+        "cache_hit_rate": 0.7303,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "per_task": {
+          "uncached_input_tokens": 112276,
+          "cached_input_tokens": 304063,
+          "output_tokens": 605,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "per_successful_task": {
+          "uncached_input_tokens": 112276,
+          "cached_input_tokens": 304063,
+          "output_tokens": 605,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        },
+        "usd_per_successful_task": null
+      },
+      "pairs": [
+        {
+          "repeat": 0,
+          "both_succeeded": true,
+          "input_ratio": 0.918,
+          "uncached_input_ratio": 0.796,
+          "steps": [
+            17,
+            18
+          ],
+          "input_per_step_ratio": 0.972
+        }
+      ]
+    }
+  },
+  "overall": {
+    "ctx": {
+      "tasks": 6,
+      "successes": 6,
+      "steps": 193,
+      "input_per_step": 53751,
+      "cache_hit_rate": 0.7609,
+      "modified_requests": 75,
+      "evicted_tool_results": 189,
+      "per_task": {
+        "uncached_input_tokens": 413428,
+        "cached_input_tokens": 1315577,
+        "output_tokens": 3449,
+        "engine_input_tokens": 0,
+        "engine_output_tokens": 0
+      },
+      "per_successful_task": {
+        "uncached_input_tokens": 413428,
+        "cached_input_tokens": 1315577,
+        "output_tokens": 3449,
+        "engine_input_tokens": 0,
+        "engine_output_tokens": 0
+      },
+      "usd_per_successful_task": null
+    },
+    "direct": {
+      "tasks": 6,
+      "successes": 6,
+      "steps": 193,
+      "input_per_step": 64484,
+      "cache_hit_rate": 0.8076,
+      "modified_requests": 0,
+      "evicted_tool_results": 0,
+      "per_task": {
+        "uncached_input_tokens": 399039,
+        "cached_input_tokens": 1675180,
+        "output_tokens": 3382,
+        "engine_input_tokens": 0,
+        "engine_output_tokens": 0
+      },
+      "per_successful_task": {
+        "uncached_input_tokens": 399039,
+        "cached_input_tokens": 1675180,
+        "output_tokens": 3382,
+        "engine_input_tokens": 0,
+        "engine_output_tokens": 0
+      },
+      "usd_per_successful_task": null
+    },
+    "paired_both_succeeded": {
+      "n": 6,
+      "median_input_ratio": 0.8885000000000001,
+      "median_input_per_step_ratio": 0.8875
+    }
+  }
+}

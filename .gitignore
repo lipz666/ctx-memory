@@ -1,0 +1,24 @@
+/target
+sdk/typescript/node_modules/
+sdk/typescript/dist/
+**/__pycache__/
+*.pyc
+.local-ctx/
+.DS_Store
+
+# Benchmark: environment, downloaded dataset, caches and per-run question copies
+# (question copies are reproducible from the dataset with the sample/subset id lists)
+bench/.venv/
+bench/data/longmemeval_s_cleaned.json
+bench/results/*.sqlite
+bench/results/**/questions.json
+
+# OpenClaw workspace files (this directory doubles as an OpenClaw workspace)
+/AGENTS.md
+/SOUL.md
+/USER.md
+/IDENTITY.md
+/TOOLS.md
+/HEARTBEAT.md
+/openclaw-workspace-state.json
+/memory/

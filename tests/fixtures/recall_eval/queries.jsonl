@@ -1,0 +1,90 @@
+{"id": "q001", "split": "dev", "project": "payments-svc", "query": "部署 payments-svc 前要做什么", "expected": ["p01"], "category": "paraphrase_zh"}
+{"id": "q002", "split": "test", "project": "payments-svc", "query": "我准备把 payments 发布到生产了，有什么要注意的吗", "expected": ["p01"], "category": "conversational"}
+{"id": "q003", "split": "dev", "project": "payments-svc", "query": "how should I store money amounts", "expected": ["p02"], "category": "cross_lingual"}
+{"id": "q004", "split": "test", "project": "payments-svc", "query": "金额计算用 float 可以吗", "expected": ["p02"], "category": "paraphrase_zh"}
+{"id": "q005", "split": "dev", "project": "payments-svc", "query": "Can I run the migration on staging today? It's Friday.", "expected": ["p03"], "category": "paraphrase_en"}
+{"id": "q006", "split": "test", "project": "payments-svc", "query": "staging 数据库周五能写吗", "expected": ["p03"], "category": "cross_lingual"}
+{"id": "q007", "split": "dev", "project": "payments-svc", "query": "Stripe webhook signature verification keeps failing", "expected": ["p04"], "category": "cross_lingual"}
+{"id": "q008", "split": "test", "project": "payments-svc", "query": "webhook 验签一直不通过怎么办", "expected": ["p04"], "category": "paraphrase_zh"}
+{"id": "q009", "split": "dev", "project": "payments-svc", "query": "集成测试跑不起来，提示连不上数据库", "expected": ["p05"], "category": "cross_lingual"}
+{"id": "q010", "split": "test", "project": "payments-svc", "query": "what env vars do the integration tests need?", "expected": ["p05"], "category": "paraphrase_en"}
+{"id": "q011", "split": "dev", "project": "payments-svc", "query": "怎么给用户退款", "expected": ["p06"], "category": "cross_lingual"}
+{"id": "q012", "split": "test", "project": "payments-svc", "query": "walk me through the refund process", "expected": ["p06"], "category": "paraphrase_en"}
+{"id": "q013", "split": "dev", "project": "payments-svc", "query": "对账任务什么时候跑", "expected": ["p07"], "category": "paraphrase_zh"}
+{"id": "q014", "split": "test", "project": "payments-svc", "query": "重复导出的对账记录怎么处理", "expected": ["p07"], "category": "paraphrase_zh"}
+{"id": "q015", "split": "dev", "project": "payments-svc", "query": "psycopg.errors.UniqueViolation: duplicate key value violates unique constraint \"ledger_pkey\"", "expected": ["p08"], "category": "error"}
+{"id": "q016", "split": "test", "project": "payments-svc", "query": "reconcile job 报主键冲突", "expected": ["p08"], "category": "cross_lingual"}
+{"id": "q017", "split": "dev", "project": "payments-svc", "query": "帮我看看这个报错：UniqueViolation ledger_pkey，重试了三次还是一样", "expected": ["p08"], "category": "error"}
+{"id": "q018", "split": "test", "project": "payments-svc", "query": "add a new column to the orders table and ship it", "expected": ["p01", "p03"], "category": "paraphrase_en"}
+{"id": "q019", "split": "dev", "project": "payments-svc", "query": "安装依赖", "expected": ["g03"], "category": "cross_lingual"}
+{"id": "q020", "split": "test", "project": "payments-svc", "query": "commit message 怎么写", "expected": ["g06"], "category": "cross_lingual"}
+{"id": "q021", "split": "dev", "project": "payments-svc", "query": "推送代码前需要做什么检查", "expected": ["g02"], "category": "paraphrase_zh"}
+{"id": "q022", "split": "test", "project": "payments-svc", "query": "测试时好时坏怎么排查", "expected": ["g04"], "category": "cross_lingual"}
+{"id": "q023", "split": "dev", "project": "payments-svc", "query": "今天天气怎么样", "expected": [], "category": "negative"}
+{"id": "q024", "split": "test", "project": "payments-svc", "query": "帮我写一首关于秋天的诗", "expected": [], "category": "negative"}
+{"id": "q025", "split": "dev", "project": "payments-svc", "query": "what's 17 times 23", "expected": [], "category": "negative"}
+{"id": "q026", "split": "test", "project": "payments-svc", "query": "pnpm install 在 CI 上失败了", "expected": [], "category": "negative_cross_project"}
+{"id": "q027", "split": "dev", "project": "payments-svc", "query": "hydration mismatch 怎么修", "expected": [], "category": "negative_cross_project"}
+{"id": "q028", "split": "test", "project": "payments-svc", "query": "Next.js 页面怎么加", "expected": [], "category": "negative_cross_project"}
+{"id": "q029", "split": "dev", "project": "atlas-web", "query": "装依赖用什么包管理器", "expected": ["a01"], "category": "cross_lingual"}
+{"id": "q030", "split": "test", "project": "atlas-web", "query": "CI 里 install 步骤怎么写", "expected": ["a01"], "category": "cross_lingual"}
+{"id": "q031", "split": "dev", "project": "atlas-web", "query": "can I add a .module.css file for this component", "expected": ["a02"], "category": "cross_lingual"}
+{"id": "q032", "split": "test", "project": "atlas-web", "query": "样式应该怎么写", "expected": ["a02", "a08"], "category": "paraphrase_zh"}
+{"id": "q033", "split": "dev", "project": "atlas-web", "query": "React hydration error: Text content does not match server-rendered HTML", "expected": ["a03"], "category": "error"}
+{"id": "q034", "split": "test", "project": "atlas-web", "query": "服务端渲染和客户端显示的时间不一致", "expected": ["a03"], "category": "cross_lingual"}
+{"id": "q035", "split": "dev", "project": "atlas-web", "query": "本地前端连哪个后端地址", "expected": ["a04"], "category": "paraphrase_zh"}
+{"id": "q036", "split": "test", "project": "atlas-web", "query": "where do I configure the API base URL", "expected": ["a04"], "category": "cross_lingual"}
+{"id": "q037", "split": "dev", "project": "atlas-web", "query": "我要新增一个设置页面，需要改哪些地方", "expected": ["a05"], "category": "cross_lingual"}
+{"id": "q038", "split": "test", "project": "atlas-web", "query": "how to add a route", "expected": ["a05"], "category": "paraphrase_en"}
+{"id": "q039", "split": "dev", "project": "atlas-web", "query": "Playwright tests time out in CI", "expected": ["a06"], "category": "cross_lingual"}
+{"id": "q040", "split": "test", "project": "atlas-web", "query": "e2e 测试在 CI 里一直超时", "expected": ["a06"], "category": "paraphrase_zh"}
+{"id": "q041", "split": "dev", "project": "atlas-web", "query": "新增一个按钮文案需要注意什么", "expected": ["a07"], "category": "paraphrase_zh"}
+{"id": "q042", "split": "test", "project": "atlas-web", "query": "i18n strings, where do they go?", "expected": ["a07"], "category": "cross_lingual"}
+{"id": "q043", "split": "dev", "project": "atlas-web", "query": "主色调的色值写在哪里", "expected": ["a08"], "category": "cross_lingual"}
+{"id": "q044", "split": "test", "project": "atlas-web", "query": "can I just use #3b82f6 directly in the component", "expected": ["a08", "a02"], "category": "paraphrase_en"}
+{"id": "q045", "split": "dev", "project": "atlas-web", "query": "部署前要先迁移数据库吗", "expected": [], "category": "negative_cross_project"}
+{"id": "q046", "split": "test", "project": "atlas-web", "query": "Stripe webhook 失败", "expected": [], "category": "negative_cross_project"}
+{"id": "q047", "split": "dev", "project": "atlas-web", "query": "用 sed 替换文件内容报 invalid command code", "expected": ["g07"], "category": "error"}
+{"id": "q048", "split": "test", "project": "atlas-web", "query": "docker 起不来", "expected": ["g05"], "category": "paraphrase_zh"}
+{"id": "q049", "split": "dev", "project": "atlas-web", "query": "周会是什么时候", "expected": ["g09"], "category": "cross_lingual"}
+{"id": "q050", "split": "test", "project": "atlas-web", "query": "怎么登录服务器", "expected": ["g10"], "category": "paraphrase_zh"}
+{"id": "q051", "split": "dev", "project": "atlas-web", "query": "文档用什么语言写", "expected": ["g01"], "category": "paraphrase_zh"}
+{"id": "q052", "split": "test", "project": "atlas-web", "query": "推荐几部科幻电影", "expected": [], "category": "negative"}
+{"id": "q053", "split": "dev", "project": "atlas-web", "query": "explain quantum entanglement simply", "expected": [], "category": "negative"}
+{"id": "q054", "split": "test", "project": "atlas-web", "query": "帮我把这句英文翻译成中文：The quick brown fox jumps over the lazy dog", "expected": [], "category": "negative"}
+{"id": "q055", "split": "dev", "project": "ctx-engine", "query": "改完 Rust 代码提交前要跑什么", "expected": ["c02"], "category": "paraphrase_zh"}
+{"id": "q056", "split": "test", "project": "ctx-engine", "query": "clippy warnings", "expected": ["c02"], "category": "lexical"}
+{"id": "q057", "split": "dev", "project": "ctx-engine", "query": "记忆存在哪里", "expected": ["c01"], "category": "paraphrase_zh"}
+{"id": "q058", "split": "test", "project": "ctx-engine", "query": "where is the source of truth for memories", "expected": ["c01"], "category": "cross_lingual"}
+{"id": "q059", "split": "dev", "project": "ctx-engine", "query": "代理监听哪个端口", "expected": ["c03"], "category": "cross_lingual"}
+{"id": "q060", "split": "test", "project": "ctx-engine", "query": "API returns 401 unauthorized", "expected": ["c03"], "category": "paraphrase_en"}
+{"id": "q061", "split": "dev", "project": "ctx-engine", "query": "OpenClaw 接入 ctx 请求路径不对", "expected": ["c04"], "category": "paraphrase_zh"}
+{"id": "q062", "split": "test", "project": "ctx-engine", "query": "openclaw provider config for the proxy", "expected": ["c04"], "category": "cross_lingual"}
+{"id": "q063", "split": "dev", "project": "ctx-engine", "query": "why does the response say gemini-3.8-flash when I asked for -high", "expected": ["c05"], "category": "paraphrase_en"}
+{"id": "q064", "split": "test", "project": "ctx-engine", "query": "网关返回的模型名和请求的不一样", "expected": ["c05"], "category": "cross_lingual"}
+{"id": "q065", "split": "dev", "project": "ctx-engine", "query": "怎么发布新版本", "expected": ["c06"], "category": "paraphrase_zh"}
+{"id": "q066", "split": "test", "project": "ctx-engine", "query": "how do I restart the ctx daemon after rebuilding", "expected": ["c06"], "category": "cross_lingual"}
+{"id": "q067", "split": "dev", "project": "ctx-engine", "query": "今天中午吃什么", "expected": [], "category": "negative"}
+{"id": "q068", "split": "test", "project": "ctx-engine", "query": "write a haiku about rust", "expected": [], "category": "negative"}
+{"id": "q069", "split": "dev", "project": "ctx-engine", "query": "周末去哪玩", "expected": [], "category": "negative"}
+{"id": "q070", "split": "test", "project": "ctx-engine", "query": "payments 退款流程", "expected": [], "category": "negative_cross_project"}
+{"id": "q071", "split": "dev", "project": "ctx-engine", "query": "pnpm frozen lockfile", "expected": [], "category": "negative_cross_project"}
+{"id": "q072", "split": "test", "project": "ctx-engine", "query": "git 推送被 hook 拦住了能跳过吗", "expected": ["g02"], "category": "paraphrase_zh"}
+{"id": "q073", "split": "dev", "project": "ctx-engine", "query": "Tailwind 颜色", "expected": [], "category": "negative_cross_project"}
+{"id": "q074", "split": "test", "project": "payments-svc", "query": "我刚把 ledger 模块重构了一下，现在想合并到 main 然后上线，你帮我确认下上线前的步骤，别漏了什么", "expected": ["p01"], "category": "conversational"}
+{"id": "q075", "split": "dev", "project": "atlas-web", "query": "The PR adds a settings page with a couple of new labels in both languages, can you check I didn't miss anything?", "expected": ["a07", "a05"], "category": "conversational"}
+{"id": "q076", "split": "test", "project": "payments-svc", "query": "customer says they were charged twice, need to reverse one of the charges", "expected": ["p06"], "category": "conversational"}
+{"id": "q077", "split": "dev", "project": "atlas-web", "query": "CI failed at the install step with ERR_PNPM_OUTDATED_LOCKFILE", "expected": ["a01"], "category": "error"}
+{"id": "q078", "split": "test", "project": "ctx-engine", "query": "I edited src/engine.rs, what checks should I run before committing?", "expected": ["c02"], "category": "conversational"}
+{"id": "q079", "split": "dev", "project": null, "query": "python 项目加个 requests 依赖", "expected": ["g03"], "category": "cross_lingual"}
+{"id": "q080", "split": "test", "project": null, "query": "pytest 偶尔失败", "expected": ["g04"], "category": "cross_lingual"}
+{"id": "q081", "split": "dev", "project": null, "query": "给我讲个笑话", "expected": [], "category": "negative"}
+{"id": "q082", "split": "test", "project": null, "query": "部署 payments-svc 前要做什么", "expected": [], "category": "negative_cross_project"}
+{"id": "q083", "split": "dev", "project": null, "query": "sed: 1: \"file.txt\": invalid command code f", "expected": ["g07"], "category": "error"}
+{"id": "q084", "split": "test", "project": "payments-svc", "query": "make migrate", "expected": ["p01"], "category": "lexical"}
+{"id": "q085", "split": "dev", "project": "payments-svc", "query": "ROUND_HALF_UP", "expected": ["p02"], "category": "lexical"}
+{"id": "q086", "split": "test", "project": "atlas-web", "query": "NEXT_PUBLIC_API_BASE", "expected": ["a04"], "category": "lexical"}
+{"id": "q087", "split": "dev", "project": "ctx-engine", "query": "X-Ctx-Token", "expected": ["c03"], "category": "lexical"}
+{"id": "q088", "split": "test", "project": null, "query": "colima", "expected": ["g05"], "category": "lexical"}
+{"id": "q089", "split": "dev", "project": null, "query": "Conventional Commits", "expected": ["g06"], "category": "lexical"}
+{"id": "q090", "split": "test", "project": null, "query": "bastion", "expected": ["g10"], "category": "lexical"}

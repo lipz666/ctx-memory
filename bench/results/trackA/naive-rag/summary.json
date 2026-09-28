@@ -1,0 +1,22 @@
+{
+  "system": "naive-rag",
+  "questions": 120,
+  "accuracy": 0.617,
+  "by_type": {
+    "abstention": "17/18",
+    "knowledge-update": "9/17",
+    "multi-session": "2/17",
+    "single-session-assistant": "17/17",
+    "single-session-preference": "10/17",
+    "single-session-user": "14/17",
+    "temporal-reasoning": "5/17"
+  },
+  "errors": 0,
+  "wall_seconds": 3450,
+  "ingest_seconds_per_question_p50": 3306.4,
+  "search_ms_p50": 19759.6,
+  "search_ms_p95": 82717.2,
+  "kept_tokens_mean": 1654,
+  "usage": {},
+  "budget_tokens": 2000
+}

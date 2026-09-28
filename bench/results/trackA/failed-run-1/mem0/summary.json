@@ -1,0 +1,24 @@
+{
+  "system": "mem0",
+  "questions": 120,
+  "accuracy": 0.0,
+  "by_type": {
+    "abstention": "0/18",
+    "knowledge-update": "0/17",
+    "multi-session": "0/17",
+    "single-session-assistant": "0/17",
+    "single-session-preference": "0/17",
+    "single-session-user": "0/17",
+    "temporal-reasoning": "0/17"
+  },
+  "errors": 120,
+  "wall_seconds": 179,
+  "ingest_seconds_per_question_p50": null,
+  "search_ms_p50": null,
+  "search_ms_p95": null,
+  "kept_tokens_mean": 0,
+  "usage": {
+    "namespaces": 0
+  },
+  "budget_tokens": 2000
+}

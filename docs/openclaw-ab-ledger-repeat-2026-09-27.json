@@ -1,0 +1,51 @@
+{
+  "kind": "paired_openclaw_pilot",
+  "tasks": 1,
+  "results": [
+    {
+      "task_id": "ledger-dedup-decimal-repeat",
+      "arm": "ctx",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 300.409,
+      "reported_usage": {
+        "input_tokens": 216292,
+        "output_tokens": 5824,
+        "cache_read_tokens": 1209214,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 1425506,
+        "cache_hit_rate": 0.8482700178042043
+      },
+      "proxy_usage": {
+        "steps": 28,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 1425506,
+        "output_tokens": 5824,
+        "cached_input_tokens": 1209214,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "all_steps_priced": false
+      }
+    },
+    {
+      "task_id": "ledger-dedup-decimal-repeat",
+      "arm": "direct",
+      "agent_exit": 0,
+      "verification_exit": 1,
+      "success": false,
+      "elapsed_seconds": 364.896,
+      "reported_usage": {
+        "input_tokens": 250638,
+        "output_tokens": 1901,
+        "cache_read_tokens": 936501,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 1187139,
+        "cache_hit_rate": 0.7888722382130483
+      }
+    }
+  ],
+  "note": "Success uses each task's verifier. USD savings remain unknown until actual response model and verified prices are available for both arms."
+}

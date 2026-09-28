@@ -1,0 +1,26 @@
+{
+  "system": "naive-rag",
+  "memories": 288,
+  "queries": 357,
+  "recall@1": 0.874,
+  "recall@3": 0.96,
+  "mrr": 0.915,
+  "test_split_recall@3": 0.972,
+  "by_category_recall@3": {
+    "conversational": "37/44",
+    "cross_lingual": "40/41",
+    "error": "36/38",
+    "lexical": "46/46",
+    "paraphrase_en": "43/43",
+    "paraphrase_zh": "46/47",
+    "updated_fact": "18/18"
+  },
+  "updated_fact_newer_first": "11/18",
+  "negatives_returned_anything": {
+    "negative": "40/40",
+    "negative_cross_project": "40/40"
+  },
+  "search_ms_p50": 2470.4,
+  "search_ms_p95": 2904.7,
+  "ingest_seconds": 33.7
+}

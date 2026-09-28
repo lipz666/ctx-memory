@@ -1,0 +1,133 @@
+{
+  "kind": "paired_openclaw_pilot",
+  "tasks": 3,
+  "results": [
+    {
+      "task_id": "inventory-atomic-retry",
+      "arm": "ctx",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 231.565,
+      "reported_usage": {
+        "input_tokens": 272826,
+        "output_tokens": 4045,
+        "cache_read_tokens": 639154,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 911980,
+        "cache_hit_rate": 0.7008421237307836
+      },
+      "proxy_usage": {
+        "steps": 21,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 911980,
+        "output_tokens": 4045,
+        "cached_input_tokens": 639154,
+        "all_steps_priced": false
+      }
+    },
+    {
+      "task_id": "inventory-atomic-retry",
+      "arm": "direct",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 246.186,
+      "reported_usage": {
+        "input_tokens": 143446,
+        "output_tokens": 3706,
+        "cache_read_tokens": 696723,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 840169,
+        "cache_hit_rate": 0.8292653025760294
+      }
+    },
+    {
+      "task_id": "ledger-dedup-decimal",
+      "arm": "ctx",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 247.085,
+      "reported_usage": {
+        "input_tokens": 298914,
+        "output_tokens": 4003,
+        "cache_read_tokens": 806297,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 1105211,
+        "cache_hit_rate": 0.7295412369221804
+      },
+      "proxy_usage": {
+        "steps": 23,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 1105211,
+        "output_tokens": 4003,
+        "cached_input_tokens": 806297,
+        "all_steps_priced": false
+      }
+    },
+    {
+      "task_id": "ledger-dedup-decimal",
+      "arm": "direct",
+      "agent_exit": 124,
+      "verification_exit": 0,
+      "success": false,
+      "elapsed_seconds": 260.098,
+      "reported_usage": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "cache_read_tokens": null,
+        "cache_write_tokens": null,
+        "total_input_tokens": null,
+        "cache_hit_rate": null
+      }
+    },
+    {
+      "task_id": "clamp-regression",
+      "arm": "direct",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 192.924,
+      "reported_usage": {
+        "input_tokens": 88975,
+        "output_tokens": 548,
+        "cache_read_tokens": 223160,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 312135,
+        "cache_hit_rate": 0.7149470581639354
+      }
+    },
+    {
+      "task_id": "clamp-regression",
+      "arm": "ctx",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 114.018,
+      "reported_usage": {
+        "input_tokens": 164461,
+        "output_tokens": 820,
+        "cache_read_tokens": 324313,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 488774,
+        "cache_hit_rate": 0.6635234280055813
+      },
+      "proxy_usage": {
+        "steps": 19,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 488774,
+        "output_tokens": 820,
+        "cached_input_tokens": 324313,
+        "all_steps_priced": false
+      }
+    }
+  ],
+  "note": "Success uses each task's verifier. USD savings remain unknown until actual response model and verified prices are available for both arms."
+}

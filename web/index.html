@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ctx · 长期记忆</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#dce6e6;background:#0d171a}*{box-sizing:border-box}body{margin:0 auto;max-width:1100px;padding:32px 20px}h1{font-size:30px;margin:0 0 6px}h2{font-size:18px;margin:0 0 14px;color:#bcead5}.sub{color:#9baead;margin-bottom:24px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:22px}.card,section{background:#142328;border:1px solid #29444a;border-radius:14px;padding:18px}.metric{font-size:26px;font-weight:700;color:#bcead5}.label{font-size:13px;color:#a5b6b8}.muted{color:#a5b6b8;font-size:13px}section{margin-bottom:18px}input,textarea,select,button{font:inherit;border-radius:8px}input,textarea,select{background:#0d171a;color:#edf5f4;border:1px solid #3b5960;padding:9px;width:100%}textarea{min-height:64px}button{border:0;background:#70d5a4;color:#09251b;padding:8px 13px;cursor:pointer;font-weight:650}button.secondary{background:#30474e;color:#e3f4ef}button.danger{background:#503236;color:#ffdbd8}form{display:grid;gap:10px}.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}.row button,.row select.narrow{flex:0 0 auto}.item{border-top:1px solid #2b464b;padding:12px 0}.item:first-child{border-top:0}.head{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.pill{font-size:11px;border:1px solid #4d706a;padding:2px 7px;border-radius:99px;color:#bee6d5;white-space:nowrap}.pill.warn{border-color:#a0794a;color:#f0be81}p{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0d171a;padding:12px;border-radius:8px;max-height:360px;overflow:auto}#notice{color:#f0be81;margin-bottom:10px}
+</style>
+<body>
+<h1>ctx</h1><div class="sub">本地长期记忆 · 跨会话记住项目事实、教训和你的偏好</div>
+<div id="notice"></div>
+<div class="grid">
+  <div class="card"><div class="metric" id="mActive">—</div><div class="label">可召回记忆</div></div>
+  <div class="card"><div class="metric" id="mPending">—</div><div class="label">待审</div></div>
+  <div class="card"><div class="metric" id="mSessions">—</div><div class="label">会话 / 已提炼</div></div>
+  <div class="card"><div class="metric" id="mInjections">—</div><div class="label">累计注入</div></div>
+  <div class="card"><div class="metric" id="mEmbedding" style="font-size:15px">—</div><div class="label">语义模型</div></div>
+</div>
+<section><h2>搜索记忆</h2><form id="search"><div class="row"><input id="q" placeholder="用自然语言提问，例如：部署前要做什么？" required><input id="qProject" placeholder="项目（可选）" style="flex:0 0 180px"><button>搜索</button></div></form><div id="results" class="muted"></div></section>
+<section><h2>写入记忆</h2><form id="newMemory"><div class="row"><select id="memoryType" class="narrow"><option value="fact">事实</option><option value="lesson">教训</option><option value="skill">做法</option><option value="rule">规则（始终生效）</option></select><input id="memoryScope" value="global" aria-label="作用域：global 或项目名"></div><textarea id="memoryContent" placeholder="一条以后的会话需要知道的信息" required></textarea><div><button type="submit">保存</button></div></form></section>
+<section><div class="row"><h2>记忆</h2><select id="filter" class="narrow"><option value="live">可召回</option><option value="pending_review">待审</option><option value="all">全部</option></select><button class="secondary" id="refresh">刷新</button></div><div id="memories"></div></section>
+<section><h2>会话</h2><div class="muted" style="margin-bottom:8px">会话空闲后自动提炼记忆；也可以手动触发。</div><div id="sessions"></div></section>
+<section><h2>步骤调试</h2><div class="row"><input id="stepId" placeholder="响应头 X-Ctx-Step 中的 evt_…" aria-label="步骤事件 ID"><button id="loadStep">查看</button></div><pre id="stepDetail">查看某一步记录的新消息、召回候选和注入情况。</pre></section>
+<script>
+const token=sessionStorage.getItem('ctxSession');
+if(!token) document.querySelector('#notice').textContent='会话已过期。请运行 ctx open 重新打开。';
+const TYPES={rule:'规则',fact:'事实',lesson:'教训',skill:'做法',intent:'意图'};
+const STATUS={active:'有效',pending_review:'待审',contested:'有争议',archived:'已归档',superseded:'已被取代'};
+async function api(path,method='GET',data){
+ const res=await fetch(path,{method,headers:{'X-Ctx-Token':token,'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined});
+ if(!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+ return res.json();
+}
+const $=id=>document.getElementById(id);
+function text(id,value){$(id).textContent=value}
+function showError(e){text('notice',e.message)}
+function el(tag,cls,content){const n=document.createElement(tag);if(cls)n.className=cls;if(content!==undefined)n.textContent=content;return n}
+function button(label,cls,onclick){const b=el('button',cls,label);b.onclick=async()=>{try{await onclick();refresh()}catch(e){showError(e)}};return b}
+function memoryItem(m,extra){
+ const item=el('div','item');const head=el('div','head');
+ head.append(el('strong','',m.title));
+ const badge=el('span','pill'+(m.status==='active'?'':' warn'),`${TYPES[m.type]||m.type} · ${m.scope} · ${STATUS[m.status]||m.status}${m.source==='agent'?' · 自动':''}`);
+ head.append(badge);item.append(head);
+ if(m.content||m.body) item.append(el('p','',m.content||m.body));
+ if(extra) item.append(el('div','muted',extra));
+ return item;
+}
+async function refresh(){
+ try{
+  const [memories,stats,sessions]=await Promise.all([api('/api/v1/memories'),api('/api/v1/stats'),api('/api/v1/sessions')]);
+  text('notice','');text('mActive',stats.active_memories);text('mPending',stats.pending_review);
+  text('mSessions',`${stats.sessions} / ${stats.extracted_sessions}`);text('mInjections',stats.injections);
+  text('mEmbedding',stats.embedding_model||'加载中或不可用（仅关键词）');
+  const filter=$('filter').value;const list=$('memories');list.replaceChildren();
+  const shown=memories.filter(m=>filter==='all'||(filter==='live'?['active','contested'].includes(m.status):m.status===filter)).reverse();
+  if(!shown.length) list.append(el('div','muted','没有记忆。'));
+  for(const m of shown){
+   const item=memoryItem(m);
+   if(m.status==='pending_review'){
+    item.append(button('批准','secondary',()=>api(`/api/v1/memories/${encodeURIComponent(m.id)}/review`,'POST',{decision:'approve'})),document.createTextNode(' '));
+    item.append(button('拒绝','danger',()=>api(`/api/v1/memories/${encodeURIComponent(m.id)}/review`,'POST',{decision:'reject'})));
+   } else if(!['archived','superseded'].includes(m.status)){
+    item.append(button('编辑','secondary',async()=>{const content=prompt('编辑记忆内容',m.body);if(content!==null)await api(`/api/v1/memories/${encodeURIComponent(m.id)}`,'PATCH',{content})}),document.createTextNode(' '));
+    item.append(button('归档','danger',()=>api(`/api/v1/memories/${encodeURIComponent(m.id)}`,'DELETE')));
+   }
+   list.append(item);
+  }
+  const box=$('sessions');box.replaceChildren();
+  if(!sessions.length) box.append(el('div','muted','还没有经过代理的会话。'));
+  for(const s of sessions.slice(0,20)){
+   const item=el('div','item');const head=el('div','head');
+   head.append(el('span','',`${s.agent} · ${s.project||'无项目'} · ${s.steps} 步 / ${s.user_turns} 轮`));
+   head.append(el('span','pill'+(s.status==='failed'?' warn':''),s.status));item.append(head);
+   item.append(el('div','muted',`最近 ${new Date(s.last_seen).toLocaleString()}${s.error?' · '+s.error:''}`));
+   if(['open','failed','done'].includes(s.status)) item.append(button('立即提炼','secondary',()=>api(`/api/v1/sessions/${encodeURIComponent(s.key)}/extract`,'POST')));
+   box.append(item);
+  }
+ }catch(e){showError(e)}
+}
+$('filter').onchange=refresh;$('refresh').onclick=refresh;
+$('search').onsubmit=async e=>{e.preventDefault();try{
+ const params=new URLSearchParams({q:$('q').value,limit:'8'});if($('qProject').value.trim())params.set('project',$('qProject').value.trim());
+ const hits=await api('/api/v1/recall?'+params);const box=$('results');box.replaceChildren();
+ if(!hits.length){box.textContent='没有相关记忆。';return}
+ for(const h of hits) box.append(memoryItem({...h,status:'active'},`相关度 ${h.score.toFixed(2)} · ${h.channel}`));
+}catch(err){showError(err)}};
+$('newMemory').onsubmit=async e=>{e.preventDefault();try{
+ await api('/api/v1/memories','POST',{content:$('memoryContent').value,type:$('memoryType').value,scope:$('memoryScope').value});
+ $('memoryContent').value='';refresh();
+}catch(err){showError(err)}};
+$('loadStep').onclick=async()=>{try{text('stepDetail',JSON.stringify(await api('/api/v1/debug/steps/'+encodeURIComponent($('stepId').value.trim())),null,2))}catch(e){showError(e)}};
+if(token) refresh();
+</script>
+</body></html>

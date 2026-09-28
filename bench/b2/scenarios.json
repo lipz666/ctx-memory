@@ -1,0 +1,106 @@
+{
+  "distractors": {
+    "billing": ["Add type hints to the functions in billing/invoice.py without changing behavior, and run the tests.", "Add a unit test for invoice_total with a single line item, and run the tests."],
+    "etl": ["Add a docstring to read_rows in etl/transform.py and run the tests.", "Add a test for read_rows that reads data/sample.csv, and run the tests."],
+    "shop": ["Add a test that addItem does not mutate the cart passed in, and run the tests.", "Make itemCount ignore negative quantities (treat them as 0), add a test, and run the tests."],
+    "notify": ["Add a test for orderShipped with a string order id, and run the tests.", "Make orderShipped throw a TypeError when the order has no id, add a test, and run the tests."],
+    "handbook": ["Make the welcome sentence in docs/onboarding.md a bit friendlier.", "Make tools/build_index.py sort pages by title instead of by file name, then rebuild the index."]
+  },
+  "scenarios": [
+    {"id": "s01", "kind": "convention", "sessions": [
+      {"repo": "billing", "role": "acquire", "message": "Make line_total raise ValueError when qty is negative, add a test, and run the tests. Also, the team decided today: from now on every NEW public function in the billing package must have a docstring whose first line starts with `Contract:` followed by inputs and output. Don't touch existing functions for that."},
+      {"repo": "billing", "role": "apply", "message": "Add a function late_fee(total, days_late) to billing/invoice.py: 1.5% of the total for every started 30 days late, rounded to cents. Add a test and run the tests.",
+       "checks": [{"type": "regex", "file": "billing/invoice.py", "pattern": "def late_fee\\([^)]*\\)[^:]*:\\s*\\n\\s*[rRuU]?(\"\"\"|''')\\s*Contract:"}, {"type": "tests"}]}]},
+    {"id": "s02", "kind": "fact", "sessions": [
+      {"repo": "billing", "role": "acquire", "message": "Check that invoice_total returns Decimal('0.00') for an empty list; add a test for it and run the tests. Background you'll need later: billing changes must be reviewed by @mei-chen from finance, and billing releases are filed in the FIN-OPS ticket queue."},
+      {"repo": "billing", "role": "apply", "message": "Write PR_DESCRIPTION.md for a planned change that adds multi-currency support to billing: summary, risks, who has to review it, and where the release ticket goes.",
+       "checks": [{"type": "contains", "file": "PR_DESCRIPTION.md", "all": ["mei-chen", "FIN-OPS"]}]}]},
+    {"id": "s03", "kind": "update", "sessions": [
+      {"repo": "billing", "role": "acquire", "message": "Add a test that line_total rounds 0.125 * 1 to 0.13, and run the tests. FYI, finance decided that new invoices will default to EUR; we will implement that soon, nothing to do for it now."},
+      {"repo": "billing", "role": "update", "message": "Quick heads-up, no code change needed today: finance changed their decision, the default currency for new invoices is now CHF, not EUR. Just reply with a short acknowledgement."},
+      {"repo": "billing", "role": "apply", "message": "Add billing/config.py with a constant DEFAULT_CURRENCY set to the currency finance currently wants for new invoices, and add new_invoice() to billing/invoice.py returning {'lines': [], 'currency': DEFAULT_CURRENCY}. Add a test and run the tests.",
+       "checks": [{"type": "regex", "file": "billing/config.py", "pattern": "DEFAULT_CURRENCY\\s*[:=][^\\n]*['\"]CHF['\"]"}, {"type": "tests"}]}]},
+    {"id": "s04", "kind": "cross_project", "sessions": [
+      {"repo": "billing", "role": "acquire", "message": "Add a test for invoice_total with three lines and run the tests. Convention for this billing project: every log message must start with the prefix `[BILL]`."},
+      {"repo": "etl", "role": "apply_other", "message": "Add logging (Python logging module) to clean() in etl/transform.py: log how many rows were dropped. Run the tests.",
+       "checks": [{"type": "regex", "file": "etl/transform.py", "pattern": "logging|getLogger"}, {"type": "not_contains", "file": "etl/transform.py", "any": ["[BILL]"]}, {"type": "tests"}]},
+      {"repo": "billing", "role": "apply", "message": "Add a warning log (Python logging module) in line_total when qty is zero. Run the tests.",
+       "checks": [{"type": "contains", "file": "billing/invoice.py", "all": ["[BILL]"]}, {"type": "tests"}]}]},
+    {"id": "s05", "kind": "convention", "sessions": [
+      {"repo": "etl", "role": "acquire", "message": "Make clean() strip whitespace around qty before parsing it; add a test and run the tests. Rule for all future work in this repo: every CSV file the pipeline writes must start with the comment line `# generated-by: etl` before the header row."},
+      {"repo": "etl", "role": "apply", "message": "Add write_rows(rows, path) to etl/transform.py that writes cleaned rows (sku, qty) to a CSV file. Add a test and run the tests.",
+       "checks": [{"type": "python", "code": "import sys, tempfile, os; sys.path.insert(0, '.'); from etl.transform import write_rows; p = os.path.join(tempfile.mkdtemp(), 'o.csv'); write_rows([{'sku': 'A', 'qty': 1}], p); assert open(p).readline().strip() == '# generated-by: etl'"}, {"type": "tests"}]}]},
+    {"id": "s06", "kind": "fact", "sessions": [
+      {"repo": "etl", "role": "acquire", "message": "Add total_qty(rows) to etl/transform.py with a test, and run the tests. For context: the production sales export lands in s3://acme-sales-raw/daily/, and the pipeline owner on the data team is Priya Nair."},
+      {"repo": "etl", "role": "apply", "message": "Create RUNBOOK.md for this pipeline: where the input data comes from and who to contact when it breaks.",
+       "checks": [{"type": "contains", "file": "RUNBOOK.md", "all": ["acme-sales-raw", "Priya"]}]}]},
+    {"id": "s07", "kind": "update", "sessions": [
+      {"repo": "etl", "role": "acquire", "message": "Add a test that clean() upper-cases skus, and run the tests. Background: when we deduplicate export rows, the key is the sku alone. Nothing to implement yet."},
+      {"repo": "etl", "role": "update", "message": "Heads-up from the data team, no change needed now: duplicates are now identified by the pair (sku, region), not by sku alone. Just acknowledge."},
+      {"repo": "etl", "role": "apply", "message": "The export now has a region column. Add dedupe(rows) to etl/transform.py that keeps the first row per duplicate according to our current dedupe rule. Add a test and run the tests.",
+       "checks": [{"type": "python", "code": "import sys; sys.path.insert(0, '.'); from etl.transform import dedupe; r = dedupe([{'sku': 'A', 'region': 'eu', 'qty': 1}, {'sku': 'A', 'region': 'us', 'qty': 2}, {'sku': 'A', 'region': 'eu', 'qty': 3}]); assert len(r) == 2, r"}, {"type": "tests"}]}]},
+    {"id": "s08", "kind": "cross_project", "sessions": [
+      {"repo": "etl", "role": "acquire", "message": "Add a test for clean() with an empty list, and run the tests. Convention in this etl repo: anything a command-line tool prints must be JSON lines only, one JSON object per line, never free text."},
+      {"repo": "handbook", "role": "apply_other", "message": "Add a --check option to tools/build_index.py that reports whether docs/INDEX.md is up to date (exit code 1 when it is not).",
+       "checks": [{"type": "shell", "cmd": "python3 tools/build_index.py && python3 tools/build_index.py --check", "stdout_not_regex": "^\\s*\\{"}]},
+      {"repo": "etl", "role": "apply", "message": "Add etl/__main__.py so that `python3 -m etl FILE` cleans the CSV file and prints how many rows were kept and dropped. Run it on data/sample.csv.",
+       "checks": [{"type": "shell", "cmd": "python3 -m etl data/sample.csv", "stdout_json_lines": true}]}]},
+    {"id": "s09", "kind": "convention", "sessions": [
+      {"repo": "shop", "role": "acquire", "message": "Make addItem throw a RangeError when qty is not a positive integer; add a test and run the tests. House rule from now on: every NEW exported function in this repo needs a JSDoc block that includes an @example tag."},
+      {"repo": "shop", "role": "apply", "message": "Add an exported function clearCart(cart) to src/cart.js that returns the cart with no items. Add a test and run the tests.",
+       "checks": [{"type": "regex", "file": "src/cart.js", "pattern": "/\\*\\*(?:(?!\\*/)[\\s\\S])*@example(?:(?!\\*/)[\\s\\S])*\\*/\\s*export\\s+(?:async\\s+)?function\\s+clearCart"}, {"type": "tests"}]}]},
+    {"id": "s10", "kind": "fact", "sessions": [
+      {"repo": "shop", "role": "acquire", "message": "Add a test that itemCount of an empty cart is 0, and run the tests. For reference: the payment sandbox key is in the 1Password vault 'Shop-Dev', and the staging shop is at https://staging.shop.acme.test."},
+      {"repo": "shop", "role": "apply", "message": "Write docs/TESTING.md explaining how to test checkout manually on staging: which URL to open and where developers get the payment sandbox key.",
+       "checks": [{"type": "contains", "file": "docs/TESTING.md", "all": ["staging.shop.acme.test", "Shop-Dev"]}]}]},
+    {"id": "s11", "kind": "update", "sessions": [
+      {"repo": "shop", "role": "acquire", "message": "Add a test that addItem defaults qty to 1, and run the tests. FYI marketing says free shipping starts at orders of 50 euros; we will implement it later."},
+      {"repo": "shop", "role": "update", "message": "Update from marketing, no code change now: the free-shipping threshold is 75 euros starting Monday. Just acknowledge."},
+      {"repo": "shop", "role": "apply", "message": "Add an exported function qualifiesForFreeShipping(totalEuros) to src/cart.js using our current free-shipping threshold. Add a test and run the tests.",
+       "checks": [{"type": "node", "code": "const m = await import(process.cwd() + '/src/cart.js'); if (m.qualifiesForFreeShipping(74.99) !== false || m.qualifiesForFreeShipping(75) !== true) process.exit(1);"}, {"type": "tests"}]}]},
+    {"id": "s12", "kind": "cross_project", "sessions": [
+      {"repo": "shop", "role": "acquire", "message": "Bump the version in package.json to 1.5.0. FYI we are about to start a changelog; the shop changelog format is one line per change: `- [SHOP-<ticket>] <summary>`, using SHOP-000 when there is no ticket."},
+      {"repo": "notify", "role": "apply_other", "message": "Create CHANGELOG.md for notify with an entry for the upcoming change to the shipped-message wording.",
+       "checks": [{"type": "not_contains", "file": "CHANGELOG.md", "any": ["SHOP-"]}, {"type": "exists", "file": "CHANGELOG.md"}]},
+      {"repo": "shop", "role": "apply", "message": "Create CHANGELOG.md with an entry for the RangeError validation in addItem (no ticket).",
+       "checks": [{"type": "contains", "file": "CHANGELOG.md", "all": ["[SHOP-000]"]}]}]},
+    {"id": "s13", "kind": "convention", "sessions": [
+      {"repo": "notify", "role": "acquire", "message": "Make orderShipped mention the carrier when order.carrier is set; add a test and run the tests. Config rule for this repo: every duration in config must be in milliseconds and its key must end with `Ms`."},
+      {"repo": "notify", "role": "apply", "message": "Add a setting to config/default.json for how long to wait between retries: 2 seconds.",
+       "checks": [{"type": "python", "code": "import json; c = json.load(open('config/default.json')); keys = [k for k in c if k not in ('retries', 'timeoutMs')]; assert any(k.endswith('Ms') and c[k] == 2000 for k in keys), c"}]}]},
+    {"id": "s14", "kind": "fact", "sessions": [
+      {"repo": "notify", "role": "acquire", "message": "Add a test that orderShipped handles id 0, and run the tests. Good to know: notify sends SMS through the Twilio sub-account 'acme-notify-eu', and on-call for notify is the #notify-oncall Slack channel."},
+      {"repo": "notify", "role": "apply", "message": "Write docs/ONCALL.md: which SMS account notify uses and where to escalate incidents.",
+       "checks": [{"type": "contains", "file": "docs/ONCALL.md", "all": ["acme-notify-eu", "#notify-oncall"]}]}]},
+    {"id": "s15", "kind": "update", "sessions": [
+      {"repo": "notify", "role": "acquire", "message": "Add a test for orderShipped with a numeric id, and run the tests. Policy note: the platform team says notification retries are capped at 3. No change needed right now."},
+      {"repo": "notify", "role": "update", "message": "Policy update from the platform team, nothing to change today: the retry cap for notifications is now 5. Just acknowledge."},
+      {"repo": "notify", "role": "apply", "message": "Set retries in config/default.json to the cap the platform team currently allows.",
+       "checks": [{"type": "python", "code": "import json; assert json.load(open('config/default.json'))['retries'] == 5"}]}]},
+    {"id": "s16", "kind": "cross_project", "sessions": [
+      {"repo": "notify", "role": "acquire", "message": "Add a test that orderShipped returns a string, and run the tests. Convention for notify: every customer-facing message string must end with ' — Acme Notify'. Leave existing messages as they are for now."},
+      {"repo": "shop", "role": "apply_other", "message": "Add an exported function cartSummary(cart) to src/cart.js that returns a short human-readable summary such as '3 items'. Add a test and run the tests.",
+       "checks": [{"type": "not_contains", "file": "src/cart.js", "any": ["Acme Notify"]}, {"type": "tests"}]},
+      {"repo": "notify", "role": "apply", "message": "Add an exported function orderDelivered(order) to src/message.js returning the customer message for a delivered order. Add a test and run the tests.",
+       "checks": [{"type": "node", "code": "const m = await import(process.cwd() + '/src/message.js'); if (!String(m.orderDelivered({ id: 3 })).endsWith(' — Acme Notify')) process.exit(1);"}, {"type": "tests"}]}]},
+    {"id": "s17", "kind": "convention", "sessions": [
+      {"repo": "handbook", "role": "acquire", "message": "Make tools/build_index.py skip files whose name starts with an underscore, then rebuild the index. Rule for the handbook from now on: every NEW page in docs/ must begin with a front-matter block (between --- lines) containing `owner:` and `reviewed:` fields."},
+      {"repo": "handbook", "role": "apply", "message": "Add a docs page docs/on-call.md describing how on-call rotation works, and rebuild the index.",
+       "checks": [{"type": "regex", "file": "docs/on-call.md", "pattern": "\\A---\\s*\\n(?:(?!---)[\\s\\S])*owner:(?:(?!---)[\\s\\S])*reviewed:|\\A---\\s*\\n(?:(?!---)[\\s\\S])*reviewed:(?:(?!---)[\\s\\S])*owner:"}]}]},
+    {"id": "s18", "kind": "fact", "sessions": [
+      {"repo": "handbook", "role": "acquire", "message": "Fix build_index.py so that a page without a title line is listed by its file name, then rebuild the index. For the handbook: our daily standup is at 09:45 Beijing time in the 'Maple' meeting room."},
+      {"repo": "handbook", "role": "apply", "message": "Add docs/team-rituals.md describing our recurring meetings (when and where), and rebuild the index.",
+       "checks": [{"type": "contains", "file": "docs/team-rituals.md", "all": ["09:45", "Maple"]}]}]},
+    {"id": "s19", "kind": "update", "sessions": [
+      {"repo": "handbook", "role": "acquire", "message": "Add a line to docs/coding-guide.md saying reviews should be done within one working day. Background: people reach internal services from home through our WireGuard VPN at vpn.acme.test."},
+      {"repo": "handbook", "role": "update", "message": "IT update, nothing to write today: we migrated remote access to Tailscale, and the old WireGuard VPN is retired. Just acknowledge."},
+      {"repo": "handbook", "role": "apply", "message": "Add docs/remote-access.md explaining how to connect to internal services from home, and rebuild the index.",
+       "checks": [{"type": "contains", "file": "docs/remote-access.md", "all": ["Tailscale"]}, {"type": "not_contains", "file": "docs/remote-access.md", "any": ["vpn.acme.test"]}]}]},
+    {"id": "s20", "kind": "cross_project", "sessions": [
+      {"repo": "handbook", "role": "acquire", "message": "Rebuild the docs index. Convention for the handbook: all pages are written in Simplified Chinese."},
+      {"repo": "billing", "role": "apply_other", "message": "Add a short section to README.md explaining how to run a single test.",
+       "checks": [{"type": "no_cjk", "file": "README.md"}]},
+      {"repo": "handbook", "role": "apply", "message": "Add docs/faq.md with three common questions new team members ask, and rebuild the index.",
+       "checks": [{"type": "cjk", "file": "docs/faq.md"}]}]}
+  ]
+}

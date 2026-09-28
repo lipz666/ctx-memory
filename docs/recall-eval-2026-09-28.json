@@ -1,0 +1,1179 @@
+{
+  "binary": "/Users/lpz/Desktop/AtomFlow/Context/target/release/ctx",
+  "split": "all",
+  "embedding": true,
+  "summary": {
+    "positives": 71,
+    "negatives": 19,
+    "hit@1": 0.901,
+    "recall@3": 0.93,
+    "mrr": 0.915,
+    "negative_fp_rate": 0.0
+  },
+  "categories": {
+    "conversational": "2/5 recall@3",
+    "cross_lingual": "24/26 recall@3",
+    "error": "6/6 recall@3",
+    "lexical": "8/8 recall@3",
+    "negative": "0/10 false positives",
+    "negative_cross_project": "0/9 false positives",
+    "paraphrase_en": "8/8 recall@3",
+    "paraphrase_zh": "18/18 recall@3"
+  },
+  "rows": [
+    {
+      "id": "q001",
+      "category": "paraphrase_zh",
+      "query": "部署 payments-svc 前要做什么",
+      "got": [
+        "p01"
+      ],
+      "expected": [
+        "p01"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q002",
+      "category": "conversational",
+      "query": "我准备把 payments 发布到生产了，有什么要注意的吗",
+      "got": [
+        "p01",
+        "p02",
+        "p05"
+      ],
+      "expected": [
+        "p01"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q003",
+      "category": "cross_lingual",
+      "query": "how should I store money amounts",
+      "got": [
+        "p02"
+      ],
+      "expected": [
+        "p02"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q004",
+      "category": "paraphrase_zh",
+      "query": "金额计算用 float 可以吗",
+      "got": [
+        "p02"
+      ],
+      "expected": [
+        "p02"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q005",
+      "category": "paraphrase_en",
+      "query": "Can I run the migration on staging today? It's Friday.",
+      "got": [
+        "p03"
+      ],
+      "expected": [
+        "p03"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q006",
+      "category": "cross_lingual",
+      "query": "staging 数据库周五能写吗",
+      "got": [
+        "p03"
+      ],
+      "expected": [
+        "p03"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q007",
+      "category": "cross_lingual",
+      "query": "Stripe webhook signature verification keeps failing",
+      "got": [
+        "p04"
+      ],
+      "expected": [
+        "p04"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q008",
+      "category": "paraphrase_zh",
+      "query": "webhook 验签一直不通过怎么办",
+      "got": [
+        "p04"
+      ],
+      "expected": [
+        "p04"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q009",
+      "category": "cross_lingual",
+      "query": "集成测试跑不起来，提示连不上数据库",
+      "got": [
+        "p05"
+      ],
+      "expected": [
+        "p05"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q010",
+      "category": "paraphrase_en",
+      "query": "what env vars do the integration tests need?",
+      "got": [
+        "p05"
+      ],
+      "expected": [
+        "p05"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q011",
+      "category": "cross_lingual",
+      "query": "怎么给用户退款",
+      "got": [
+        "p06"
+      ],
+      "expected": [
+        "p06"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q012",
+      "category": "paraphrase_en",
+      "query": "walk me through the refund process",
+      "got": [
+        "p06"
+      ],
+      "expected": [
+        "p06"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q013",
+      "category": "paraphrase_zh",
+      "query": "对账任务什么时候跑",
+      "got": [
+        "p07"
+      ],
+      "expected": [
+        "p07"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q014",
+      "category": "paraphrase_zh",
+      "query": "重复导出的对账记录怎么处理",
+      "got": [
+        "p07"
+      ],
+      "expected": [
+        "p07"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q015",
+      "category": "error",
+      "query": "psycopg.errors.UniqueViolation: duplicate key value violates unique constraint \"ledger_pkey\"",
+      "got": [
+        "p08"
+      ],
+      "expected": [
+        "p08"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q016",
+      "category": "cross_lingual",
+      "query": "reconcile job 报主键冲突",
+      "got": [
+        "p08"
+      ],
+      "expected": [
+        "p08"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q017",
+      "category": "error",
+      "query": "帮我看看这个报错：UniqueViolation ledger_pkey，重试了三次还是一样",
+      "got": [
+        "p08"
+      ],
+      "expected": [
+        "p08"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q018",
+      "category": "paraphrase_en",
+      "query": "add a new column to the orders table and ship it",
+      "got": [
+        "p01"
+      ],
+      "expected": [
+        "p01",
+        "p03"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q019",
+      "category": "cross_lingual",
+      "query": "安装依赖",
+      "got": [
+        "g03"
+      ],
+      "expected": [
+        "g03"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q020",
+      "category": "cross_lingual",
+      "query": "commit message 怎么写",
+      "got": [
+        "g06"
+      ],
+      "expected": [
+        "g06"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q021",
+      "category": "paraphrase_zh",
+      "query": "推送代码前需要做什么检查",
+      "got": [
+        "g02"
+      ],
+      "expected": [
+        "g02"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q022",
+      "category": "cross_lingual",
+      "query": "测试时好时坏怎么排查",
+      "got": [
+        "g04",
+        "p04"
+      ],
+      "expected": [
+        "g04"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q023",
+      "category": "negative",
+      "query": "今天天气怎么样",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q024",
+      "category": "negative",
+      "query": "帮我写一首关于秋天的诗",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q025",
+      "category": "negative",
+      "query": "what's 17 times 23",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q026",
+      "category": "negative_cross_project",
+      "query": "pnpm install 在 CI 上失败了",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q027",
+      "category": "negative_cross_project",
+      "query": "hydration mismatch 怎么修",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q028",
+      "category": "negative_cross_project",
+      "query": "Next.js 页面怎么加",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q029",
+      "category": "cross_lingual",
+      "query": "装依赖用什么包管理器",
+      "got": [
+        "g03"
+      ],
+      "expected": [
+        "a01"
+      ],
+      "hit1": false,
+      "recall3": false,
+      "rr": 0.0
+    },
+    {
+      "id": "q030",
+      "category": "cross_lingual",
+      "query": "CI 里 install 步骤怎么写",
+      "got": [
+        "a06",
+        "a01"
+      ],
+      "expected": [
+        "a01"
+      ],
+      "hit1": false,
+      "recall3": true,
+      "rr": 0.5
+    },
+    {
+      "id": "q031",
+      "category": "cross_lingual",
+      "query": "can I add a .module.css file for this component",
+      "got": [
+        "a02"
+      ],
+      "expected": [
+        "a02"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q032",
+      "category": "paraphrase_zh",
+      "query": "样式应该怎么写",
+      "got": [
+        "a02"
+      ],
+      "expected": [
+        "a02",
+        "a08"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q033",
+      "category": "error",
+      "query": "React hydration error: Text content does not match server-rendered HTML",
+      "got": [
+        "a03"
+      ],
+      "expected": [
+        "a03"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q034",
+      "category": "cross_lingual",
+      "query": "服务端渲染和客户端显示的时间不一致",
+      "got": [
+        "a03"
+      ],
+      "expected": [
+        "a03"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q035",
+      "category": "paraphrase_zh",
+      "query": "本地前端连哪个后端地址",
+      "got": [
+        "a04"
+      ],
+      "expected": [
+        "a04"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q036",
+      "category": "cross_lingual",
+      "query": "where do I configure the API base URL",
+      "got": [
+        "a04"
+      ],
+      "expected": [
+        "a04"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q037",
+      "category": "cross_lingual",
+      "query": "我要新增一个设置页面，需要改哪些地方",
+      "got": [
+        "a05",
+        "a07"
+      ],
+      "expected": [
+        "a05"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q038",
+      "category": "paraphrase_en",
+      "query": "how to add a route",
+      "got": [
+        "a05"
+      ],
+      "expected": [
+        "a05"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q039",
+      "category": "cross_lingual",
+      "query": "Playwright tests time out in CI",
+      "got": [
+        "a06"
+      ],
+      "expected": [
+        "a06"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q040",
+      "category": "paraphrase_zh",
+      "query": "e2e 测试在 CI 里一直超时",
+      "got": [
+        "a06"
+      ],
+      "expected": [
+        "a06"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q041",
+      "category": "paraphrase_zh",
+      "query": "新增一个按钮文案需要注意什么",
+      "got": [
+        "a07"
+      ],
+      "expected": [
+        "a07"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q042",
+      "category": "cross_lingual",
+      "query": "i18n strings, where do they go?",
+      "got": [],
+      "expected": [
+        "a07"
+      ],
+      "hit1": false,
+      "recall3": false,
+      "rr": 0.0
+    },
+    {
+      "id": "q043",
+      "category": "cross_lingual",
+      "query": "主色调的色值写在哪里",
+      "got": [
+        "a08"
+      ],
+      "expected": [
+        "a08"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q044",
+      "category": "paraphrase_en",
+      "query": "can I just use #3b82f6 directly in the component",
+      "got": [
+        "a08"
+      ],
+      "expected": [
+        "a08",
+        "a02"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q045",
+      "category": "negative_cross_project",
+      "query": "部署前要先迁移数据库吗",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q046",
+      "category": "negative_cross_project",
+      "query": "Stripe webhook 失败",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q047",
+      "category": "error",
+      "query": "用 sed 替换文件内容报 invalid command code",
+      "got": [
+        "g07"
+      ],
+      "expected": [
+        "g07"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q048",
+      "category": "paraphrase_zh",
+      "query": "docker 起不来",
+      "got": [
+        "g05"
+      ],
+      "expected": [
+        "g05"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q049",
+      "category": "cross_lingual",
+      "query": "周会是什么时候",
+      "got": [
+        "g09"
+      ],
+      "expected": [
+        "g09"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q050",
+      "category": "paraphrase_zh",
+      "query": "怎么登录服务器",
+      "got": [
+        "g10"
+      ],
+      "expected": [
+        "g10"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q051",
+      "category": "paraphrase_zh",
+      "query": "文档用什么语言写",
+      "got": [
+        "g01"
+      ],
+      "expected": [
+        "g01"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q052",
+      "category": "negative",
+      "query": "推荐几部科幻电影",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q053",
+      "category": "negative",
+      "query": "explain quantum entanglement simply",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q054",
+      "category": "negative",
+      "query": "帮我把这句英文翻译成中文：The quick brown fox jumps over the lazy dog",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q055",
+      "category": "paraphrase_zh",
+      "query": "改完 Rust 代码提交前要跑什么",
+      "got": [
+        "c02"
+      ],
+      "expected": [
+        "c02"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q056",
+      "category": "lexical",
+      "query": "clippy warnings",
+      "got": [
+        "c02"
+      ],
+      "expected": [
+        "c02"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q057",
+      "category": "paraphrase_zh",
+      "query": "记忆存在哪里",
+      "got": [
+        "c01"
+      ],
+      "expected": [
+        "c01"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q058",
+      "category": "cross_lingual",
+      "query": "where is the source of truth for memories",
+      "got": [
+        "c01"
+      ],
+      "expected": [
+        "c01"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q059",
+      "category": "cross_lingual",
+      "query": "代理监听哪个端口",
+      "got": [
+        "c03"
+      ],
+      "expected": [
+        "c03"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q060",
+      "category": "paraphrase_en",
+      "query": "API returns 401 unauthorized",
+      "got": [
+        "c03"
+      ],
+      "expected": [
+        "c03"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q061",
+      "category": "paraphrase_zh",
+      "query": "OpenClaw 接入 ctx 请求路径不对",
+      "got": [
+        "c04"
+      ],
+      "expected": [
+        "c04"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q062",
+      "category": "cross_lingual",
+      "query": "openclaw provider config for the proxy",
+      "got": [
+        "c04"
+      ],
+      "expected": [
+        "c04"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q063",
+      "category": "paraphrase_en",
+      "query": "why does the response say gemini-3.8-flash when I asked for -high",
+      "got": [
+        "c05"
+      ],
+      "expected": [
+        "c05"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q064",
+      "category": "cross_lingual",
+      "query": "网关返回的模型名和请求的不一样",
+      "got": [
+        "c05"
+      ],
+      "expected": [
+        "c05"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q065",
+      "category": "paraphrase_zh",
+      "query": "怎么发布新版本",
+      "got": [
+        "c06"
+      ],
+      "expected": [
+        "c06"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q066",
+      "category": "cross_lingual",
+      "query": "how do I restart the ctx daemon after rebuilding",
+      "got": [
+        "c06",
+        "c01"
+      ],
+      "expected": [
+        "c06"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q067",
+      "category": "negative",
+      "query": "今天中午吃什么",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q068",
+      "category": "negative",
+      "query": "write a haiku about rust",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q069",
+      "category": "negative",
+      "query": "周末去哪玩",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q070",
+      "category": "negative_cross_project",
+      "query": "payments 退款流程",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q071",
+      "category": "negative_cross_project",
+      "query": "pnpm frozen lockfile",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q072",
+      "category": "paraphrase_zh",
+      "query": "git 推送被 hook 拦住了能跳过吗",
+      "got": [
+        "g02"
+      ],
+      "expected": [
+        "g02"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q073",
+      "category": "negative_cross_project",
+      "query": "Tailwind 颜色",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q074",
+      "category": "conversational",
+      "query": "我刚把 ledger 模块重构了一下，现在想合并到 main 然后上线，你帮我确认下上线前的步骤，别漏了什么",
+      "got": [
+        "g08"
+      ],
+      "expected": [
+        "p01"
+      ],
+      "hit1": false,
+      "recall3": false,
+      "rr": 0.0
+    },
+    {
+      "id": "q075",
+      "category": "conversational",
+      "query": "The PR adds a settings page with a couple of new labels in both languages, can you check I didn't miss anything?",
+      "got": [],
+      "expected": [
+        "a07",
+        "a05"
+      ],
+      "hit1": false,
+      "recall3": false,
+      "rr": 0.0
+    },
+    {
+      "id": "q076",
+      "category": "conversational",
+      "query": "customer says they were charged twice, need to reverse one of the charges",
+      "got": [
+        "p08"
+      ],
+      "expected": [
+        "p06"
+      ],
+      "hit1": false,
+      "recall3": false,
+      "rr": 0.0
+    },
+    {
+      "id": "q077",
+      "category": "error",
+      "query": "CI failed at the install step with ERR_PNPM_OUTDATED_LOCKFILE",
+      "got": [
+        "a01",
+        "a06"
+      ],
+      "expected": [
+        "a01"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q078",
+      "category": "conversational",
+      "query": "I edited src/engine.rs, what checks should I run before committing?",
+      "got": [
+        "g02",
+        "c02"
+      ],
+      "expected": [
+        "c02"
+      ],
+      "hit1": false,
+      "recall3": true,
+      "rr": 0.5
+    },
+    {
+      "id": "q079",
+      "category": "cross_lingual",
+      "query": "python 项目加个 requests 依赖",
+      "got": [
+        "g03"
+      ],
+      "expected": [
+        "g03"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q080",
+      "category": "cross_lingual",
+      "query": "pytest 偶尔失败",
+      "got": [
+        "g04"
+      ],
+      "expected": [
+        "g04"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q081",
+      "category": "negative",
+      "query": "给我讲个笑话",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q082",
+      "category": "negative_cross_project",
+      "query": "部署 payments-svc 前要做什么",
+      "got": [],
+      "expected": [],
+      "false_positive": false
+    },
+    {
+      "id": "q083",
+      "category": "error",
+      "query": "sed: 1: \"file.txt\": invalid command code f",
+      "got": [
+        "g07"
+      ],
+      "expected": [
+        "g07"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q084",
+      "category": "lexical",
+      "query": "make migrate",
+      "got": [
+        "p01"
+      ],
+      "expected": [
+        "p01"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q085",
+      "category": "lexical",
+      "query": "ROUND_HALF_UP",
+      "got": [
+        "p02"
+      ],
+      "expected": [
+        "p02"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q086",
+      "category": "lexical",
+      "query": "NEXT_PUBLIC_API_BASE",
+      "got": [
+        "a04"
+      ],
+      "expected": [
+        "a04"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q087",
+      "category": "lexical",
+      "query": "X-Ctx-Token",
+      "got": [
+        "c03"
+      ],
+      "expected": [
+        "c03"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q088",
+      "category": "lexical",
+      "query": "colima",
+      "got": [
+        "g05"
+      ],
+      "expected": [
+        "g05"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q089",
+      "category": "lexical",
+      "query": "Conventional Commits",
+      "got": [
+        "g06"
+      ],
+      "expected": [
+        "g06"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    },
+    {
+      "id": "q090",
+      "category": "lexical",
+      "query": "bastion",
+      "got": [
+        "g10"
+      ],
+      "expected": [
+        "g10"
+      ],
+      "hit1": true,
+      "recall3": true,
+      "rr": 1.0
+    }
+  ]
+}

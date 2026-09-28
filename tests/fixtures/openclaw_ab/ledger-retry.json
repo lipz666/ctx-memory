@@ -1,0 +1,11 @@
+{
+  "tasks": [
+    {
+      "id": "ledger-dedup-decimal-repeat",
+      "source_dir": "ledger",
+      "prompt": "Fix the payment reconciliation according to README.md. Run a local check before finishing.",
+      "verify": ["python3", "${MANIFEST_DIR}/../../verify_ab_workloads.py", "ledger"],
+      "timeout_seconds": 360
+    }
+  ]
+}

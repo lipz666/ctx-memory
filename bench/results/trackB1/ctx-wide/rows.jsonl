@@ -1,0 +1,357 @@
+{"id": "b1q000", "category": "lexical", "split": "dev", "got": ["tidewatch-20", "tidewatch-12", "?"], "returned": 11, "ms": 941.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q001", "category": "lexical", "split": "test", "got": ["harbor-api-19", "harbor-api-19-v2", "harbor-api-09"], "returned": 11, "ms": 1137.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q002", "category": "negative_cross_project", "split": "dev", "got": ["global-28", "global-24", "pixelcraft-10"], "returned": 3, "ms": 781.7, "returned_any": true}
+{"id": "b1q003", "category": "lexical", "split": "test", "got": ["harbor-api-37", "harbor-api-09", "harbor-api-03"], "returned": 11, "ms": 995.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q004", "category": "paraphrase_zh", "split": "dev", "got": ["lumen-docs-38", "lumen-docs-15", "lumen-docs-03"], "returned": 10, "ms": 1095.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q005", "category": "negative", "split": "test", "got": [], "returned": 0, "ms": 1052.9, "returned_any": false}
+{"id": "b1q006", "category": "conversational", "split": "dev", "got": ["kilnrs-32", "kilnrs-21", "kilnrs-09"], "returned": 10, "ms": 1151.7, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q007", "category": "paraphrase_en", "split": "test", "got": ["kilnrs-01", "kilnrs-14", "kilnrs-08"], "returned": 10, "ms": 1223.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q008", "category": "cross_lingual", "split": "dev", "got": ["lumen-docs-22", "lumen-docs-33", "lumen-docs-04"], "returned": 11, "ms": 1363.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q009", "category": "conversational", "split": "test", "got": ["lumen-docs-35", "lumen-docs-04", "lumen-docs-11"], "returned": 13, "ms": 1234.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q010", "category": "conversational", "split": "dev", "got": ["pixelcraft-17", "pixelcraft-01", "pixelcraft-07"], "returned": 12, "ms": 1431.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q011", "category": "cross_lingual", "split": "test", "got": ["orderflow-05", "orderflow-15", "orderflow-34"], "returned": 11, "ms": 1272.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q012", "category": "paraphrase_en", "split": "dev", "got": ["?", "tidewatch-07", "tidewatch-11"], "returned": 10, "ms": 1528.6, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q013", "category": "conversational", "split": "test", "got": ["pixelcraft-23", "pixelcraft-21", "pixelcraft-28"], "returned": 11, "ms": 1622.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q014", "category": "lexical", "split": "dev", "got": ["lumen-docs-01", "lumen-docs-18", "lumen-docs-31"], "returned": 19, "ms": 1691.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q015", "category": "negative_cross_project", "split": "test", "got": ["tidewatch-10", "global-13"], "returned": 2, "ms": 1785.2, "returned_any": true}
+{"id": "b1q016", "category": "lexical", "split": "dev", "got": ["global-23", "global-08", "global-06"], "returned": 8, "ms": 1532.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q017", "category": "negative", "split": "test", "got": [], "returned": 0, "ms": 1635.6, "returned_any": false}
+{"id": "b1q018", "category": "error", "split": "dev", "got": ["kilnrs-10", "kilnrs-32", "kilnrs-27"], "returned": 10, "ms": 1655.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q019", "category": "paraphrase_zh", "split": "test", "got": ["tidewatch-39", "tidewatch-21", "tidewatch-35"], "returned": 11, "ms": 1641.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q020", "category": "paraphrase_en", "split": "dev", "got": ["global-19", "global-12", "global-09"], "returned": 10, "ms": 1482.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q021", "category": "cross_lingual", "split": "test", "got": ["harbor-api-34", "harbor-api-02", "harbor-api-12"], "returned": 11, "ms": 1685.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q022", "category": "negative_cross_project", "split": "dev", "got": ["global-13", "orderflow-37", "orderflow-38"], "returned": 13, "ms": 1668.6, "returned_any": true}
+{"id": "b1q023", "category": "cross_lingual", "split": "test", "got": ["lumen-docs-04", "lumen-docs-19", "lumen-docs-11"], "returned": 10, "ms": 1744.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q024", "category": "error", "split": "dev", "got": ["pixelcraft-36", "?", "pixelcraft-21"], "returned": 10, "ms": 1498.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q025", "category": "cross_lingual", "split": "test", "got": ["lumen-docs-16", "lumen-docs-35", "lumen-docs-29"], "returned": 14, "ms": 1748.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q026", "category": "lexical", "split": "dev", "got": ["pixelcraft-07", "pixelcraft-31", "pixelcraft-02"], "returned": 12, "ms": 1705.2, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q027", "category": "paraphrase_en", "split": "test", "got": ["lumen-docs-21", "lumen-docs-14", "lumen-docs-20"], "returned": 10, "ms": 1370.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q028", "category": "paraphrase_zh", "split": "dev", "got": ["orderflow-27", "orderflow-04", "orderflow-10"], "returned": 10, "ms": 1427.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q029", "category": "negative", "split": "test", "got": ["global-22"], "returned": 1, "ms": 1564.3, "returned_any": true}
+{"id": "b1q030", "category": "paraphrase_en", "split": "dev", "got": ["pixelcraft-33", "pixelcraft-37", "pixelcraft-01"], "returned": 12, "ms": 1452.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q031", "category": "paraphrase_en", "split": "test", "got": ["orderflow-10", "orderflow-33", "orderflow-33-v2"], "returned": 12, "ms": 1626.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q032", "category": "paraphrase_zh", "split": "dev", "got": ["pixelcraft-20", "pixelcraft-21", "pixelcraft-28"], "returned": 12, "ms": 1554.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q033", "category": "negative_cross_project", "split": "test", "got": ["harbor-api-33", "harbor-api-10", "harbor-api-01"], "returned": 8, "ms": 1521.0, "returned_any": true}
+{"id": "b1q034", "category": "paraphrase_zh", "split": "dev", "got": ["tidewatch-09", "tidewatch-32", "tidewatch-00"], "returned": 10, "ms": 1546.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q035", "category": "cross_lingual", "split": "test", "got": ["pixelcraft-22", "pixelcraft-07", "pixelcraft-31"], "returned": 12, "ms": 1351.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q036", "category": "negative_cross_project", "split": "dev", "got": ["pixelcraft-39", "pixelcraft-03", "global-07"], "returned": 3, "ms": 1534.0, "returned_any": true}
+{"id": "b1q037", "category": "error", "split": "test", "got": ["tidewatch-13", "tidewatch-36", "tidewatch-30"], "returned": 10, "ms": 1524.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q038", "category": "lexical", "split": "dev", "got": ["pixelcraft-01", "pixelcraft-13", "pixelcraft-23"], "returned": 13, "ms": 1163.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q039", "category": "negative", "split": "test", "got": ["global-00"], "returned": 1, "ms": 1478.4, "returned_any": true}
+{"id": "b1q040", "category": "lexical", "split": "dev", "got": ["harbor-api-07", "harbor-api-02", "harbor-api-24"], "returned": 10, "ms": 1684.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q041", "category": "paraphrase_en", "split": "test", "got": ["global-13", "global-27", "lumen-docs-22"], "returned": 7, "ms": 1427.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q042", "category": "updated_fact", "split": "dev", "got": ["harbor-api-00-v2", "harbor-api-00", "harbor-api-14"], "returned": 13, "ms": 1456.4, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q043", "category": "paraphrase_en", "split": "test", "got": ["global-25", "global-06", "global-01"], "returned": 9, "ms": 1644.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q044", "category": "negative_cross_project", "split": "dev", "got": ["pixelcraft-30"], "returned": 1, "ms": 1279.4, "returned_any": true}
+{"id": "b1q045", "category": "negative_cross_project", "split": "test", "got": ["tidewatch-31", "tidewatch-24", "tidewatch-15"], "returned": 6, "ms": 1283.3, "returned_any": true}
+{"id": "b1q046", "category": "lexical", "split": "dev", "got": ["tidewatch-32", "tidewatch-02", "tidewatch-00"], "returned": 12, "ms": 1673.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q047", "category": "cross_lingual", "split": "test", "got": ["kilnrs-32", "kilnrs-32-v2", "kilnrs-06"], "returned": 11, "ms": 1376.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q048", "category": "paraphrase_zh", "split": "dev", "got": ["lumen-docs-08", "lumen-docs-39", "lumen-docs-11"], "returned": 10, "ms": 1503.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q049", "category": "error", "split": "test", "got": ["tidewatch-37", "tidewatch-35", "tidewatch-25"], "returned": 13, "ms": 1349.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q050", "category": "negative_cross_project", "split": "dev", "got": ["harbor-api-34", "harbor-api-13"], "returned": 2, "ms": 1491.2, "returned_any": true}
+{"id": "b1q051", "category": "negative", "split": "test", "got": ["kilnrs-06"], "returned": 1, "ms": 1343.3, "returned_any": true}
+{"id": "b1q052", "category": "lexical", "split": "dev", "got": ["kilnrs-23", "kilnrs-34", "kilnrs-10"], "returned": 16, "ms": 1679.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q053", "category": "lexical", "split": "test", "got": ["orderflow-26", "orderflow-39", "orderflow-04"], "returned": 10, "ms": 1356.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q054", "category": "updated_fact", "split": "dev", "got": ["harbor-api-32-v2", "harbor-api-32", "harbor-api-09"], "returned": 11, "ms": 1682.4, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q055", "category": "paraphrase_zh", "split": "test", "got": ["pixelcraft-02", "pixelcraft-23", "pixelcraft-37"], "returned": 10, "ms": 1524.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q056", "category": "lexical", "split": "dev", "got": ["orderflow-32", "global-13", "orderflow-14"], "returned": 12, "ms": 1418.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q057", "category": "lexical", "split": "test", "got": ["kilnrs-17", "kilnrs-05", "kilnrs-12"], "returned": 4, "ms": 1687.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q058", "category": "paraphrase_en", "split": "dev", "got": ["pixelcraft-21", "pixelcraft-12", "pixelcraft-31"], "returned": 10, "ms": 1494.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q059", "category": "negative", "split": "test", "got": ["global-20", "global-16"], "returned": 2, "ms": 1546.4, "returned_any": true}
+{"id": "b1q060", "category": "cross_lingual", "split": "dev", "got": ["global-13", "harbor-api-00-v2", "harbor-api-11"], "returned": 13, "ms": 1597.7, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q061", "category": "cross_lingual", "split": "test", "got": ["pixelcraft-34", "pixelcraft-19", "pixelcraft-04"], "returned": 11, "ms": 1549.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q062", "category": "paraphrase_zh", "split": "dev", "got": ["orderflow-21", "?", "orderflow-12"], "returned": 10, "ms": 1755.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q063", "category": "conversational", "split": "test", "got": ["harbor-api-05", "harbor-api-02", "harbor-api-12"], "returned": 11, "ms": 1536.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q064", "category": "error", "split": "dev", "got": ["pixelcraft-30", "pixelcraft-02", "pixelcraft-12"], "returned": 11, "ms": 1740.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q065", "category": "negative_cross_project", "split": "test", "got": ["kilnrs-32", "kilnrs-32-v2", "global-27"], "returned": 3, "ms": 1599.0, "returned_any": true}
+{"id": "b1q066", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1832.2, "returned_any": false}
+{"id": "b1q067", "category": "lexical", "split": "test", "got": ["lumen-docs-19", "lumen-docs-04", "lumen-docs-26"], "returned": 11, "ms": 1524.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q068", "category": "paraphrase_en", "split": "dev", "got": ["tidewatch-04", "tidewatch-36", "tidewatch-11"], "returned": 10, "ms": 1502.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q069", "category": "lexical", "split": "test", "got": ["pixelcraft-25", "pixelcraft-07", "pixelcraft-31"], "returned": 3, "ms": 1456.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q070", "category": "paraphrase_en", "split": "dev", "got": ["?", "pixelcraft-21", "pixelcraft-39"], "returned": 10, "ms": 1358.5, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q071", "category": "paraphrase_en", "split": "test", "got": ["harbor-api-09", "harbor-api-18", "harbor-api-08"], "returned": 12, "ms": 1650.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q072", "category": "error", "split": "dev", "got": ["pixelcraft-18", "?", "pixelcraft-22"], "returned": 10, "ms": 1407.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q073", "category": "paraphrase_zh", "split": "test", "got": ["kilnrs-06", "kilnrs-32", "kilnrs-32-v2"], "returned": 10, "ms": 1362.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q074", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1605.9, "returned_any": false}
+{"id": "b1q075", "category": "negative_cross_project", "split": "test", "got": ["pixelcraft-26", "pixelcraft-29-v2", "pixelcraft-29"], "returned": 7, "ms": 1379.1, "returned_any": true}
+{"id": "b1q076", "category": "paraphrase_zh", "split": "dev", "got": ["lumen-docs-14", "lumen-docs-29-v2", "lumen-docs-29"], "returned": 10, "ms": 1543.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q077", "category": "negative", "split": "test", "got": [], "returned": 0, "ms": 1560.4, "returned_any": false}
+{"id": "b1q078", "category": "error", "split": "dev", "got": ["harbor-api-13", "harbor-api-09", "harbor-api-18"], "returned": 11, "ms": 1587.6, "hit1": false, "recall3": true, "rr": 0.3333333333333333}
+{"id": "b1q079", "category": "conversational", "split": "test", "got": ["global-09", "global-19", "global-17"], "returned": 10, "ms": 1576.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q080", "category": "negative_cross_project", "split": "dev", "got": ["?", "global-01", "orderflow-33-v2"], "returned": 11, "ms": 1522.9, "returned_any": true}
+{"id": "b1q081", "category": "paraphrase_zh", "split": "test", "got": ["harbor-api-38", "harbor-api-37", "harbor-api-36"], "returned": 12, "ms": 1457.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q082", "category": "paraphrase_en", "split": "dev", "got": ["tidewatch-28", "tidewatch-07", "tidewatch-02"], "returned": 10, "ms": 1506.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q083", "category": "paraphrase_zh", "split": "test", "got": ["kilnrs-30", "kilnrs-30-v2", "kilnrs-04-v2"], "returned": 10, "ms": 1269.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q084", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1434.5, "returned_any": false}
+{"id": "b1q085", "category": "lexical", "split": "test", "got": ["kilnrs-35", "kilnrs-05", "kilnrs-11"], "returned": 11, "ms": 1469.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q086", "category": "error", "split": "dev", "got": ["kilnrs-16", "kilnrs-28", "kilnrs-04"], "returned": 10, "ms": 1247.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q087", "category": "cross_lingual", "split": "test", "got": ["orderflow-23", "?", "orderflow-12"], "returned": 13, "ms": 1429.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q088", "category": "negative_cross_project", "split": "dev", "got": ["global-06"], "returned": 1, "ms": 1332.8, "returned_any": true}
+{"id": "b1q089", "category": "cross_lingual", "split": "test", "got": ["global-08", "global-23", "global-16"], "returned": 10, "ms": 1427.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q090", "category": "negative_cross_project", "split": "dev", "got": ["orderflow-29", "global-26"], "returned": 2, "ms": 1343.0, "returned_any": true}
+{"id": "b1q091", "category": "negative", "split": "test", "got": [], "returned": 0, "ms": 1361.0, "returned_any": false}
+{"id": "b1q092", "category": "lexical", "split": "dev", "got": ["orderflow-02", "orderflow-39", "orderflow-35"], "returned": 11, "ms": 1537.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q093", "category": "error", "split": "test", "got": ["lumen-docs-36", "lumen-docs-21", "lumen-docs-12"], "returned": 11, "ms": 1367.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q094", "category": "conversational", "split": "dev", "got": ["lumen-docs-29", "lumen-docs-29-v2", "global-19"], "returned": 19, "ms": 1591.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q095", "category": "negative", "split": "test", "got": ["global-15"], "returned": 1, "ms": 1568.4, "returned_any": true}
+{"id": "b1q096", "category": "paraphrase_zh", "split": "dev", "got": ["lumen-docs-20", "lumen-docs-09", "lumen-docs-33"], "returned": 11, "ms": 1763.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q097", "category": "negative", "split": "test", "got": [], "returned": 0, "ms": 1542.5, "returned_any": false}
+{"id": "b1q098", "category": "paraphrase_en", "split": "dev", "got": ["lumen-docs-39", "lumen-docs-26", "lumen-docs-08"], "returned": 10, "ms": 1732.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q099", "category": "paraphrase_en", "split": "test", "got": ["kilnrs-07", "kilnrs-04-v2", "kilnrs-04"], "returned": 10, "ms": 1522.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q100", "category": "conversational", "split": "dev", "got": ["orderflow-24-v2", "orderflow-36", "orderflow-20"], "returned": 13, "ms": 1423.9, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q101", "category": "paraphrase_zh", "split": "test", "got": ["orderflow-39", "orderflow-26", "orderflow-03"], "returned": 11, "ms": 1742.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q102", "category": "negative_cross_project", "split": "dev", "got": ["kilnrs-15", "kilnrs-10"], "returned": 2, "ms": 1570.7, "returned_any": true}
+{"id": "b1q103", "category": "error", "split": "test", "got": ["lumen-docs-12", "lumen-docs-36", "lumen-docs-15"], "returned": 11, "ms": 1458.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q104", "category": "error", "split": "dev", "got": ["tidewatch-07", "?", "tidewatch-21"], "returned": 10, "ms": 1768.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q105", "category": "negative_cross_project", "split": "test", "got": ["global-13", "global-04", "global-06"], "returned": 10, "ms": 1555.6, "returned_any": true}
+{"id": "b1q106", "category": "cross_lingual", "split": "dev", "got": ["kilnrs-20", "global-13", "kilnrs-00"], "returned": 15, "ms": 1689.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q107", "category": "conversational", "split": "test", "got": ["global-27", "global-23", "global-10"], "returned": 9, "ms": 1486.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q108", "category": "paraphrase_zh", "split": "dev", "got": ["global-06", "global-03", "global-23"], "returned": 10, "ms": 1440.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q109", "category": "paraphrase_zh", "split": "test", "got": ["global-00", "global-06", "kilnrs-20"], "returned": 11, "ms": 1457.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q110", "category": "paraphrase_zh", "split": "dev", "got": ["kilnrs-18", "kilnrs-31", "kilnrs-04-v2"], "returned": 10, "ms": 1515.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q111", "category": "cross_lingual", "split": "test", "got": ["tidewatch-11", "tidewatch-25", "tidewatch-37"], "returned": 12, "ms": 1649.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q112", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1862.0, "returned_any": false}
+{"id": "b1q113", "category": "lexical", "split": "test", "got": ["lumen-docs-25", "lumen-docs-05", "lumen-docs-30"], "returned": 11, "ms": 1519.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q114", "category": "conversational", "split": "dev", "got": ["orderflow-12", "global-28", "orderflow-33-v2"], "returned": 15, "ms": 1582.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q115", "category": "conversational", "split": "test", "got": ["lumen-docs-35", "lumen-docs-05", "lumen-docs-25"], "returned": 15, "ms": 1897.7, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q116", "category": "paraphrase_zh", "split": "dev", "got": ["harbor-api-14", "harbor-api-37", "harbor-api-26"], "returned": 13, "ms": 1528.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q117", "category": "conversational", "split": "test", "got": ["lumen-docs-11", "lumen-docs-39", "lumen-docs-04"], "returned": 11, "ms": 1531.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q118", "category": "conversational", "split": "dev", "got": ["tidewatch-12", "tidewatch-02", "tidewatch-11"], "returned": 13, "ms": 2071.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q119", "category": "paraphrase_zh", "split": "test", "got": ["lumen-docs-02", "lumen-docs-00", "lumen-docs-22"], "returned": 11, "ms": 1547.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q120", "category": "conversational", "split": "dev", "got": ["tidewatch-24", "tidewatch-30", "tidewatch-39"], "returned": 10, "ms": 2055.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q121", "category": "updated_fact", "split": "test", "got": ["pixelcraft-29", "pixelcraft-29-v2", "pixelcraft-28"], "returned": 12, "ms": 1503.5, "hit1": false, "recall3": true, "rr": 0.5, "newer_first": false}
+{"id": "b1q122", "category": "conversational", "split": "dev", "got": ["pixelcraft-29", "pixelcraft-29-v2", "pixelcraft-26"], "returned": 15, "ms": 1715.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q123", "category": "negative_cross_project", "split": "test", "got": ["lumen-docs-03", "lumen-docs-26", "lumen-docs-15"], "returned": 5, "ms": 1674.0, "returned_any": true}
+{"id": "b1q124", "category": "paraphrase_en", "split": "dev", "got": ["global-01", "harbor-api-35", "global-09"], "returned": 14, "ms": 1471.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q125", "category": "paraphrase_en", "split": "test", "got": ["kilnrs-31", "kilnrs-18", "kilnrs-11"], "returned": 11, "ms": 2017.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q126", "category": "paraphrase_zh", "split": "dev", "got": ["pixelcraft-38", "pixelcraft-18", "?"], "returned": 10, "ms": 1720.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q127", "category": "negative", "split": "test", "got": [], "returned": 0, "ms": 1890.8, "returned_any": false}
+{"id": "b1q128", "category": "cross_lingual", "split": "dev", "got": ["tidewatch-35", "tidewatch-01", "tidewatch-37"], "returned": 10, "ms": 2090.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q129", "category": "paraphrase_zh", "split": "test", "got": ["harbor-api-26", "global-04", "harbor-api-11"], "returned": 15, "ms": 1373.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q130", "category": "error", "split": "dev", "got": ["kilnrs-17"], "returned": 1, "ms": 1685.8, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q131", "category": "negative_cross_project", "split": "test", "got": ["harbor-api-04", "harbor-api-10", "harbor-api-39"], "returned": 5, "ms": 1418.2, "returned_any": true}
+{"id": "b1q132", "category": "paraphrase_zh", "split": "dev", "got": ["tidewatch-33", "tidewatch-00", "tidewatch-24"], "returned": 10, "ms": 1608.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q133", "category": "conversational", "split": "test", "got": ["tidewatch-06", "tidewatch-15-v2", "tidewatch-36"], "returned": 10, "ms": 1386.1, "hit1": false, "recall3": true, "rr": 0.3333333333333333}
+{"id": "b1q134", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1636.2, "returned_any": false}
+{"id": "b1q135", "category": "cross_lingual", "split": "test", "got": ["lumen-docs-10", "lumen-docs-16", "lumen-docs-35"], "returned": 12, "ms": 1565.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q136", "category": "paraphrase_zh", "split": "dev", "got": ["global-24", "global-17", "global-15"], "returned": 4, "ms": 1763.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q137", "category": "paraphrase_en", "split": "test", "got": ["kilnrs-37", "kilnrs-13", "kilnrs-02"], "returned": 11, "ms": 1207.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q138", "category": "conversational", "split": "dev", "got": ["pixelcraft-31", "pixelcraft-37", "pixelcraft-35"], "returned": 12, "ms": 1857.6, "hit1": false, "recall3": true, "rr": 0.3333333333333333}
+{"id": "b1q139", "category": "lexical", "split": "test", "got": ["pixelcraft-13", "pixelcraft-37", "pixelcraft-03"], "returned": 11, "ms": 1585.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q140", "category": "conversational", "split": "dev", "got": ["orderflow-36", "orderflow-37", "orderflow-32"], "returned": 11, "ms": 1894.5, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q141", "category": "paraphrase_zh", "split": "test", "got": ["pixelcraft-26", "pixelcraft-28", "pixelcraft-21"], "returned": 11, "ms": 2003.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q142", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1980.4, "returned_any": false}
+{"id": "b1q143", "category": "negative", "split": "test", "got": ["global-17", "pixelcraft-14", "global-09"], "returned": 4, "ms": 1707.6, "returned_any": true}
+{"id": "b1q144", "category": "cross_lingual", "split": "dev", "got": ["lumen-docs-28", "lumen-docs-29", "lumen-docs-29-v2"], "returned": 12, "ms": 1225.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q145", "category": "paraphrase_zh", "split": "test", "got": ["orderflow-33-v2", "orderflow-33", "orderflow-26"], "returned": 10, "ms": 1698.4, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q146", "category": "negative_cross_project", "split": "dev", "got": ["orderflow-17", "orderflow-12"], "returned": 2, "ms": 1771.9, "returned_any": true}
+{"id": "b1q147", "category": "paraphrase_zh", "split": "test", "got": ["lumen-docs-32", "lumen-docs-24", "lumen-docs-07"], "returned": 11, "ms": 1642.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q148", "category": "paraphrase_en", "split": "dev", "got": ["harbor-api-27", "harbor-api-09", "harbor-api-13"], "returned": 10, "ms": 1917.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q149", "category": "conversational", "split": "test", "got": ["harbor-api-23", "harbor-api-01", "harbor-api-31"], "returned": 13, "ms": 1478.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q150", "category": "paraphrase_zh", "split": "dev", "got": ["kilnrs-00", "kilnrs-31", "kilnrs-20"], "returned": 12, "ms": 1748.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q151", "category": "paraphrase_zh", "split": "test", "got": ["tidewatch-27", "tidewatch-05", "tidewatch-10"], "returned": 14, "ms": 1326.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q152", "category": "paraphrase_en", "split": "dev", "got": ["kilnrs-13", "kilnrs-09", "kilnrs-32"], "returned": 12, "ms": 1539.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q153", "category": "updated_fact", "split": "test", "got": ["harbor-api-19", "harbor-api-19-v2", "harbor-api-09"], "returned": 13, "ms": 1613.9, "hit1": false, "recall3": true, "rr": 0.5, "newer_first": false}
+{"id": "b1q154", "category": "negative", "split": "dev", "got": ["global-15"], "returned": 1, "ms": 1462.5, "returned_any": true}
+{"id": "b1q155", "category": "cross_lingual", "split": "test", "got": ["kilnrs-26", "kilnrs-16", "kilnrs-11"], "returned": 10, "ms": 1492.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q156", "category": "paraphrase_en", "split": "dev", "got": ["harbor-api-33", "harbor-api-10", "harbor-api-21"], "returned": 13, "ms": 1555.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q157", "category": "error", "split": "test", "got": ["orderflow-13", "orderflow-28", "orderflow-14"], "returned": 11, "ms": 1539.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q158", "category": "cross_lingual", "split": "dev", "got": ["global-20", "global-27", "global-02"], "returned": 13, "ms": 1522.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q159", "category": "negative_cross_project", "split": "test", "got": ["harbor-api-11", "global-04", "harbor-api-26"], "returned": 8, "ms": 1568.1, "returned_any": true}
+{"id": "b1q160", "category": "lexical", "split": "dev", "got": ["lumen-docs-07"], "returned": 1, "ms": 1505.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q161", "category": "paraphrase_zh", "split": "test", "got": ["kilnrs-24", "kilnrs-26", "kilnrs-31"], "returned": 10, "ms": 1402.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q162", "category": "error", "split": "dev", "got": ["kilnrs-34", "kilnrs-23", "kilnrs-13"], "returned": 11, "ms": 1617.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q163", "category": "lexical", "split": "test", "got": ["harbor-api-13", "harbor-api-08", "harbor-api-37"], "returned": 11, "ms": 1461.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q164", "category": "cross_lingual", "split": "dev", "got": ["global-14", "global-16", "global-22"], "returned": 9, "ms": 1413.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q165", "category": "negative", "split": "test", "got": ["global-21"], "returned": 1, "ms": 1478.7, "returned_any": true}
+{"id": "b1q166", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1627.0, "returned_any": false}
+{"id": "b1q167", "category": "paraphrase_zh", "split": "test", "got": ["pixelcraft-08", "pixelcraft-26", "global-00"], "returned": 14, "ms": 1305.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q168", "category": "error", "split": "dev", "got": ["lumen-docs-00", "lumen-docs-02", "lumen-docs-20"], "returned": 11, "ms": 1590.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q169", "category": "negative_cross_project", "split": "test", "got": ["kilnrs-13", "kilnrs-22", "kilnrs-03"], "returned": 6, "ms": 1364.6, "returned_any": true}
+{"id": "b1q170", "category": "error", "split": "dev", "got": ["lumen-docs-06", "lumen-docs-02", "lumen-docs-22"], "returned": 11, "ms": 1495.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q171", "category": "error", "split": "test", "got": ["pixelcraft-06", "pixelcraft-15", "pixelcraft-33"], "returned": 10, "ms": 1384.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q172", "category": "cross_lingual", "split": "dev", "got": ["harbor-api-04", "harbor-api-39", "harbor-api-00-v2"], "returned": 10, "ms": 1400.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q173", "category": "conversational", "split": "test", "got": ["orderflow-08", "orderflow-25", "orderflow-26"], "returned": 11, "ms": 1833.5, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q174", "category": "paraphrase_en", "split": "dev", "got": ["orderflow-34", "orderflow-25", "orderflow-09"], "returned": 10, "ms": 1909.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q175", "category": "cross_lingual", "split": "test", "got": ["orderflow-17", "global-01", "global-17"], "returned": 19, "ms": 1485.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q176", "category": "error", "split": "dev", "got": ["global-16", "global-18", "global-15"], "returned": 10, "ms": 1754.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q177", "category": "error", "split": "test", "got": ["orderflow-37", "?", "orderflow-02"], "returned": 12, "ms": 1954.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q178", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1749.4, "returned_any": false}
+{"id": "b1q179", "category": "lexical", "split": "test", "got": ["harbor-api-01", "harbor-api-12", "harbor-api-08"], "returned": 10, "ms": 1882.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q180", "category": "conversational", "split": "dev", "got": ["lumen-docs-17", "lumen-docs-29-v2", "lumen-docs-29"], "returned": 12, "ms": 1159.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q181", "category": "conversational", "split": "test", "got": ["kilnrs-39", "kilnrs-38", "kilnrs-21"], "returned": 11, "ms": 1860.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q182", "category": "paraphrase_en", "split": "dev", "got": ["harbor-api-21", "harbor-api-33", "harbor-api-00-v2"], "returned": 11, "ms": 1991.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q183", "category": "cross_lingual", "split": "test", "got": ["pixelcraft-16", "pixelcraft-20", "pixelcraft-27-v2"], "returned": 3, "ms": 1460.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q184", "category": "lexical", "split": "dev", "got": ["global-29", "global-17", "pixelcraft-37"], "returned": 14, "ms": 1240.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q185", "category": "error", "split": "test", "got": ["tidewatch-31", "tidewatch-17", "global-13"], "returned": 11, "ms": 1947.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q186", "category": "lexical", "split": "dev", "got": ["orderflow-14", "orderflow-20", "orderflow-24"], "returned": 10, "ms": 1486.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q187", "category": "error", "split": "test", "got": ["orderflow-07", "orderflow-24", "orderflow-27"], "returned": 10, "ms": 1476.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q188", "category": "negative_cross_project", "split": "dev", "got": ["orderflow-33", "orderflow-39", "orderflow-33-v2"], "returned": 6, "ms": 1367.9, "returned_any": true}
+{"id": "b1q189", "category": "cross_lingual", "split": "test", "got": ["harbor-api-28", "harbor-api-00-v2", "harbor-api-21"], "returned": 12, "ms": 1724.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q190", "category": "updated_fact", "split": "dev", "got": ["tidewatch-38-v2", "tidewatch-38", "tidewatch-09"], "returned": 10, "ms": 1293.4, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q191", "category": "error", "split": "test", "got": ["kilnrs-22", "kilnrs-13", "kilnrs-02"], "returned": 10, "ms": 1459.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q192", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1803.0, "returned_any": false}
+{"id": "b1q193", "category": "paraphrase_zh", "split": "test", "got": ["tidewatch-15", "tidewatch-15-v2", "tidewatch-21"], "returned": 10, "ms": 1226.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q194", "category": "paraphrase_en", "split": "dev", "got": ["tidewatch-22", "tidewatch-17", "tidewatch-34"], "returned": 11, "ms": 1405.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q195", "category": "updated_fact", "split": "test", "got": ["orderflow-33-v2", "orderflow-33", "orderflow-26"], "returned": 10, "ms": 1985.4, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q196", "category": "lexical", "split": "dev", "got": ["?", "tidewatch-06", "tidewatch-11"], "returned": 12, "ms": 1202.6, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q197", "category": "negative_cross_project", "split": "test", "got": ["kilnrs-32", "kilnrs-33", "kilnrs-02"], "returned": 7, "ms": 1378.6, "returned_any": true}
+{"id": "b1q198", "category": "negative_cross_project", "split": "dev", "got": ["kilnrs-05", "kilnrs-22", "kilnrs-16"], "returned": 6, "ms": 1266.1, "returned_any": true}
+{"id": "b1q199", "category": "updated_fact", "split": "test", "got": ["orderflow-24-v2", "orderflow-24", "orderflow-33-v2"], "returned": 11, "ms": 1984.4, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q200", "category": "updated_fact", "split": "dev", "got": ["orderflow-18-v2", "orderflow-18", "orderflow-26"], "returned": 12, "ms": 1946.1, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q201", "category": "negative_cross_project", "split": "test", "got": ["lumen-docs-08", "lumen-docs-11", "lumen-docs-33"], "returned": 3, "ms": 1238.8, "returned_any": true}
+{"id": "b1q202", "category": "paraphrase_zh", "split": "dev", "got": ["kilnrs-36", "kilnrs-03", "kilnrs-24"], "returned": 11, "ms": 1377.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q203", "category": "conversational", "split": "test", "got": ["orderflow-23", "orderflow-06", "orderflow-15"], "returned": 12, "ms": 1824.5, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q204", "category": "cross_lingual", "split": "dev", "got": ["harbor-api-10", "harbor-api-25", "harbor-api-36"], "returned": 10, "ms": 1603.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q205", "category": "error", "split": "test", "got": ["kilnrs-28", "kilnrs-23", "kilnrs-36"], "returned": 10, "ms": 1887.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q206", "category": "negative_cross_project", "split": "dev", "got": ["kilnrs-17"], "returned": 1, "ms": 1769.8, "returned_any": true}
+{"id": "b1q207", "category": "error", "split": "test", "got": ["harbor-api-12", "harbor-api-01", "harbor-api-30"], "returned": 10, "ms": 1981.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q208", "category": "conversational", "split": "dev", "got": ["pixelcraft-05", "pixelcraft-39", "pixelcraft-15"], "returned": 7, "ms": 1364.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q209", "category": "lexical", "split": "test", "got": ["tidewatch-26", "tidewatch-04", "tidewatch-36"], "returned": 14, "ms": 1947.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q210", "category": "error", "split": "dev", "got": ["tidewatch-25", "tidewatch-00", "tidewatch-11"], "returned": 11, "ms": 2001.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q211", "category": "paraphrase_en", "split": "test", "got": ["orderflow-16", "orderflow-25", "orderflow-36"], "returned": 11, "ms": 1989.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q212", "category": "negative", "split": "dev", "got": ["global-07"], "returned": 1, "ms": 1767.2, "returned_any": true}
+{"id": "b1q213", "category": "negative", "split": "test", "got": [], "returned": 0, "ms": 1494.8, "returned_any": false}
+{"id": "b1q214", "category": "conversational", "split": "dev", "got": ["kilnrs-02", "kilnrs-09", "kilnrs-32"], "returned": 11, "ms": 1737.9, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q215", "category": "lexical", "split": "test", "got": ["global-05"], "returned": 1, "ms": 1820.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q216", "category": "paraphrase_en", "split": "dev", "got": ["lumen-docs-03", "lumen-docs-04", "lumen-docs-12"], "returned": 10, "ms": 1676.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q217", "category": "conversational", "split": "test", "got": ["kilnrs-09", "kilnrs-32", "kilnrs-32-v2"], "returned": 11, "ms": 1685.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q218", "category": "paraphrase_en", "split": "dev", "got": ["harbor-api-39", "harbor-api-30", "harbor-api-24"], "returned": 10, "ms": 1653.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q219", "category": "lexical", "split": "test", "got": ["lumen-docs-37", "lumen-docs-37-v2", "lumen-docs-33"], "returned": 12, "ms": 1553.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q220", "category": "cross_lingual", "split": "dev", "got": ["global-26", "global-00", "global-03"], "returned": 11, "ms": 2307.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q221", "category": "cross_lingual", "split": "test", "got": ["pixelcraft-04", "pixelcraft-30", "pixelcraft-29"], "returned": 10, "ms": 2290.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q222", "category": "updated_fact", "split": "dev", "got": ["lumen-docs-27-v2", "lumen-docs-27", "lumen-docs-29-v2"], "returned": 13, "ms": 2187.3, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q223", "category": "lexical", "split": "test", "got": ["harbor-api-25", "harbor-api-36", "harbor-api-10"], "returned": 10, "ms": 1766.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q224", "category": "lexical", "split": "dev", "got": ["pixelcraft-07", "pixelcraft-31", "pixelcraft-02"], "returned": 12, "ms": 2267.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q225", "category": "paraphrase_en", "split": "test", "got": ["lumen-docs-22", "lumen-docs-02", "lumen-docs-33"], "returned": 10, "ms": 2309.9, "hit1": false, "recall3": true, "rr": 0.3333333333333333}
+{"id": "b1q226", "category": "negative", "split": "dev", "got": ["global-02"], "returned": 1, "ms": 2278.8, "returned_any": true}
+{"id": "b1q227", "category": "negative_cross_project", "split": "test", "got": ["harbor-api-18", "harbor-api-22", "harbor-api-11"], "returned": 8, "ms": 2511.8, "returned_any": true}
+{"id": "b1q228", "category": "negative", "split": "dev", "got": ["global-11"], "returned": 1, "ms": 2332.8, "returned_any": true}
+{"id": "b1q229", "category": "paraphrase_zh", "split": "test", "got": ["orderflow-03", "orderflow-04", "orderflow-26"], "returned": 11, "ms": 1979.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q230", "category": "paraphrase_zh", "split": "dev", "got": ["lumen-docs-26", "lumen-docs-39", "lumen-docs-22"], "returned": 12, "ms": 2500.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q231", "category": "paraphrase_en", "split": "test", "got": ["harbor-api-15", "harbor-api-30", "harbor-api-12"], "returned": 12, "ms": 2372.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q232", "category": "cross_lingual", "split": "dev", "got": ["lumen-docs-34", "lumen-docs-17", "lumen-docs-27-v2"], "returned": 10, "ms": 2069.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q233", "category": "error", "split": "test", "got": ["orderflow-31", "orderflow-25", "orderflow-13"], "returned": 3, "ms": 2264.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q234", "category": "updated_fact", "split": "dev", "got": ["kilnrs-30-v2", "kilnrs-30", "kilnrs-04-v2"], "returned": 10, "ms": 2064.8, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q235", "category": "negative", "split": "test", "got": [], "returned": 0, "ms": 2169.7, "returned_any": false}
+{"id": "b1q236", "category": "lexical", "split": "dev", "got": ["pixelcraft-37", "pixelcraft-13", "pixelcraft-01"], "returned": 13, "ms": 1656.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q237", "category": "error", "split": "test", "got": ["lumen-docs-18", "lumen-docs-01", "lumen-docs-32"], "returned": 14, "ms": 1803.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q238", "category": "negative", "split": "dev", "got": ["global-01", "orderflow-33", "orderflow-17"], "returned": 6, "ms": 2020.7, "returned_any": true}
+{"id": "b1q239", "category": "updated_fact", "split": "test", "got": ["pixelcraft-27-v2", "pixelcraft-27", "pixelcraft-23"], "returned": 11, "ms": 1572.7, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q240", "category": "negative_cross_project", "split": "dev", "got": ["global-06", "kilnrs-15"], "returned": 2, "ms": 2046.5, "returned_any": true}
+{"id": "b1q241", "category": "paraphrase_en", "split": "test", "got": ["harbor-api-03", "harbor-api-10", "harbor-api-17"], "returned": 15, "ms": 1855.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q242", "category": "cross_lingual", "split": "dev", "got": ["kilnrs-14", "kilnrs-09", "kilnrs-32"], "returned": 10, "ms": 1506.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q243", "category": "updated_fact", "split": "test", "got": ["tidewatch-15", "tidewatch-15-v2", "tidewatch-21"], "returned": 10, "ms": 1659.7, "hit1": false, "recall3": true, "rr": 0.5, "newer_first": false}
+{"id": "b1q244", "category": "conversational", "split": "dev", "got": ["orderflow-12", "orderflow-00", "global-24"], "returned": 16, "ms": 2002.2, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q245", "category": "lexical", "split": "test", "got": ["global-11", "global-01", "global-07"], "returned": 4, "ms": 1634.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q246", "category": "conversational", "split": "dev", "got": ["tidewatch-24", "tidewatch-30", "tidewatch-26"], "returned": 10, "ms": 1531.4, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q247", "category": "negative_cross_project", "split": "test", "got": ["harbor-api-29", "harbor-api-37", "harbor-api-19"], "returned": 9, "ms": 1956.6, "returned_any": true}
+{"id": "b1q248", "category": "cross_lingual", "split": "dev", "got": ["tidewatch-29", "tidewatch-22", "tidewatch-17"], "returned": 11, "ms": 1675.5, "hit1": false, "recall3": true, "rr": 0.3333333333333333}
+{"id": "b1q249", "category": "negative_cross_project", "split": "test", "got": ["orderflow-07", "global-15"], "returned": 2, "ms": 1562.0, "returned_any": true}
+{"id": "b1q250", "category": "conversational", "split": "dev", "got": ["tidewatch-06", "tidewatch-12", "tidewatch-20"], "returned": 12, "ms": 1918.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q251", "category": "cross_lingual", "split": "test", "got": ["tidewatch-29", "tidewatch-32", "tidewatch-09"], "returned": 10, "ms": 1598.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q252", "category": "error", "split": "dev", "got": ["harbor-api-00", "harbor-api-14", "harbor-api-26"], "returned": 15, "ms": 1902.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q253", "category": "paraphrase_zh", "split": "test", "got": ["orderflow-09", "orderflow-34", "orderflow-25"], "returned": 10, "ms": 1661.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q254", "category": "negative_cross_project", "split": "dev", "got": ["orderflow-31", "orderflow-16", "orderflow-13"], "returned": 7, "ms": 2249.0, "returned_any": true}
+{"id": "b1q255", "category": "error", "split": "test", "got": ["global-28", "tidewatch-24", "tidewatch-26"], "returned": 13, "ms": 1832.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q256", "category": "cross_lingual", "split": "dev", "got": ["?", "orderflow-21", "orderflow-23"], "returned": 10, "ms": 2200.6, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q257", "category": "lexical", "split": "test", "got": ["kilnrs-29", "kilnrs-20", "kilnrs-38"], "returned": 12, "ms": 2210.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q258", "category": "updated_fact", "split": "dev", "got": ["?", "?", "pixelcraft-39"], "returned": 13, "ms": 1177.4, "hit1": false, "recall3": false, "rr": 0.0, "newer_first": false}
+{"id": "b1q259", "category": "negative", "split": "test", "got": [], "returned": 0, "ms": 2536.2, "returned_any": false}
+{"id": "b1q260", "category": "updated_fact", "split": "dev", "got": ["lumen-docs-29", "lumen-docs-29-v2", "lumen-docs-22"], "returned": 11, "ms": 1483.4, "hit1": false, "recall3": true, "rr": 0.5, "newer_first": false}
+{"id": "b1q261", "category": "conversational", "split": "test", "got": ["harbor-api-29", "harbor-api-32", "harbor-api-09"], "returned": 13, "ms": 2383.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q262", "category": "conversational", "split": "dev", "got": ["harbor-api-32-v2", "harbor-api-09", "harbor-api-18"], "returned": 11, "ms": 2623.3, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q263", "category": "lexical", "split": "test", "got": ["lumen-docs-13", "lumen-docs-30", "lumen-docs-23"], "returned": 11, "ms": 1492.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q264", "category": "cross_lingual", "split": "dev", "got": ["pixelcraft-10", "pixelcraft-17", "pixelcraft-36"], "returned": 10, "ms": 1831.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q265", "category": "paraphrase_en", "split": "test", "got": ["lumen-docs-15", "lumen-docs-38", "lumen-docs-03"], "returned": 10, "ms": 3004.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q266", "category": "updated_fact", "split": "dev", "got": ["kilnrs-04-v2", "kilnrs-04", "kilnrs-25"], "returned": 12, "ms": 2993.6, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q267", "category": "lexical", "split": "test", "got": ["lumen-docs-31"], "returned": 1, "ms": 3027.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q268", "category": "negative", "split": "dev", "got": ["global-16", "global-24"], "returned": 2, "ms": 2374.1, "returned_any": true}
+{"id": "b1q269", "category": "lexical", "split": "test", "got": ["orderflow-08", "orderflow-36", "orderflow-24-v2"], "returned": 18, "ms": 1843.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q270", "category": "error", "split": "dev", "got": ["lumen-docs-24", "lumen-docs-00", "lumen-docs-20"], "returned": 12, "ms": 2207.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q271", "category": "paraphrase_zh", "split": "test", "got": ["harbor-api-32", "harbor-api-32-v2", "harbor-api-34"], "returned": 12, "ms": 1722.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q272", "category": "updated_fact", "split": "dev", "got": ["lumen-docs-37-v2", "lumen-docs-37", "lumen-docs-22"], "returned": 15, "ms": 2145.4, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q273", "category": "conversational", "split": "test", "got": ["global-01", "global-03", "global-10"], "returned": 14, "ms": 2416.8, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q274", "category": "paraphrase_en", "split": "dev", "got": ["kilnrs-19", "kilnrs-07", "kilnrs-04"], "returned": 10, "ms": 1123.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q275", "category": "negative_cross_project", "split": "test", "got": ["orderflow-14"], "returned": 1, "ms": 1622.0, "returned_any": true}
+{"id": "b1q276", "category": "conversational", "split": "dev", "got": ["kilnrs-33", "kilnrs-35", "kilnrs-27"], "returned": 12, "ms": 1148.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q277", "category": "cross_lingual", "split": "test", "got": ["orderflow-29", "orderflow-19", "orderflow-03"], "returned": 9, "ms": 2260.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q278", "category": "paraphrase_en", "split": "dev", "got": ["pixelcraft-03", "pixelcraft-02", "pixelcraft-13"], "returned": 14, "ms": 1457.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q279", "category": "paraphrase_en", "split": "test", "got": ["pixelcraft-27", "pixelcraft-27-v2", "pixelcraft-15"], "returned": 10, "ms": 2493.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q280", "category": "paraphrase_zh", "split": "dev", "got": ["harbor-api-20", "harbor-api-34", "harbor-api-26"], "returned": 14, "ms": 1976.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q281", "category": "cross_lingual", "split": "test", "got": ["pixelcraft-28", "pixelcraft-07", "pixelcraft-31"], "returned": 10, "ms": 2273.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q282", "category": "cross_lingual", "split": "dev", "got": ["tidewatch-05", "tidewatch-31", "tidewatch-10"], "returned": 12, "ms": 2430.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q283", "category": "error", "split": "test", "got": ["lumen-docs-30", "lumen-docs-32", "lumen-docs-10"], "returned": 7, "ms": 2159.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q284", "category": "negative_cross_project", "split": "dev", "got": ["harbor-api-14"], "returned": 1, "ms": 1732.4, "returned_any": true}
+{"id": "b1q285", "category": "cross_lingual", "split": "test", "got": ["harbor-api-16", "harbor-api-30", "harbor-api-36"], "returned": 10, "ms": 2056.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q286", "category": "negative_cross_project", "split": "dev", "got": ["pixelcraft-29", "pixelcraft-34", "pixelcraft-29-v2"], "returned": 10, "ms": 1169.5, "returned_any": true}
+{"id": "b1q287", "category": "cross_lingual", "split": "test", "got": ["tidewatch-23", "tidewatch-23-v2", "tidewatch-30"], "returned": 10, "ms": 2234.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q288", "category": "lexical", "split": "dev", "got": ["kilnrs-05", "kilnrs-35", "kilnrs-22"], "returned": 11, "ms": 2215.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q289", "category": "paraphrase_en", "split": "test", "got": ["global-07", "global-00", "global-02"], "returned": 14, "ms": 1876.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q290", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1440.2, "returned_any": false}
+{"id": "b1q291", "category": "updated_fact", "split": "test", "got": ["tidewatch-23-v2", "tidewatch-23", "tidewatch-00"], "returned": 10, "ms": 1991.0, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q292", "category": "error", "split": "dev", "got": ["pixelcraft-00", "pixelcraft-04", "global-10"], "returned": 13, "ms": 2232.1, "hit1": false, "recall3": true, "rr": 0.3333333333333333}
+{"id": "b1q293", "category": "cross_lingual", "split": "test", "got": ["global-20", "global-02", "global-15"], "returned": 19, "ms": 2086.6, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q294", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1864.4, "returned_any": false}
+{"id": "b1q295", "category": "paraphrase_zh", "split": "test", "got": ["global-12", "global-20", "global-11"], "returned": 13, "ms": 2494.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q296", "category": "negative_cross_project", "split": "dev", "got": [], "returned": 0, "ms": 2669.3, "returned_any": false}
+{"id": "b1q297", "category": "conversational", "split": "test", "got": ["tidewatch-25", "tidewatch-02", "tidewatch-17"], "returned": 12, "ms": 2311.7, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q298", "category": "paraphrase_en", "split": "dev", "got": ["orderflow-28", "orderflow-26", "orderflow-25"], "returned": 11, "ms": 2243.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q299", "category": "cross_lingual", "split": "test", "got": ["kilnrs-02", "kilnrs-32", "kilnrs-27"], "returned": 11, "ms": 1911.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q300", "category": "negative", "split": "dev", "got": ["global-15", "global-25", "harbor-api-35"], "returned": 8, "ms": 2192.1, "returned_any": true}
+{"id": "b1q301", "category": "conversational", "split": "test", "got": ["lumen-docs-35", "lumen-docs-01", "lumen-docs-24"], "returned": 13, "ms": 1869.8, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q302", "category": "negative", "split": "dev", "got": ["global-10", "global-27"], "returned": 2, "ms": 2410.0, "returned_any": true}
+{"id": "b1q303", "category": "paraphrase_en", "split": "test", "got": ["orderflow-22", "orderflow-03", "orderflow-28"], "returned": 10, "ms": 2221.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q304", "category": "updated_fact", "split": "dev", "got": ["kilnrs-32-v2", "kilnrs-32", "kilnrs-09"], "returned": 10, "ms": 2380.9, "hit1": true, "recall3": true, "rr": 1.0, "newer_first": true}
+{"id": "b1q305", "category": "error", "split": "test", "got": ["pixelcraft-00", "pixelcraft-26", "pixelcraft-11"], "returned": 13, "ms": 1849.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q306", "category": "conversational", "split": "dev", "got": ["tidewatch-25", "tidewatch-03", "global-13"], "returned": 15, "ms": 1968.7, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q307", "category": "conversational", "split": "test", "got": ["kilnrs-27", "kilnrs-32", "kilnrs-29"], "returned": 10, "ms": 2305.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q308", "category": "negative_cross_project", "split": "dev", "got": [], "returned": 0, "ms": 1923.2, "returned_any": false}
+{"id": "b1q309", "category": "paraphrase_en", "split": "test", "got": ["orderflow-04", "orderflow-26", "orderflow-39"], "returned": 10, "ms": 1981.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q310", "category": "paraphrase_en", "split": "dev", "got": ["lumen-docs-27", "lumen-docs-28", "lumen-docs-29-v2"], "returned": 11, "ms": 1897.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q311", "category": "conversational", "split": "test", "got": ["pixelcraft-11", "pixelcraft-00", "pixelcraft-06"], "returned": 11, "ms": 2047.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q312", "category": "error", "split": "dev", "got": ["orderflow-22", "orderflow-39", "orderflow-04"], "returned": 11, "ms": 1714.4, "hit1": false, "recall3": false, "rr": 0.0}
+{"id": "b1q313", "category": "paraphrase_zh", "split": "test", "got": ["orderflow-15", "orderflow-05", "orderflow-34"], "returned": 7, "ms": 1111.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q314", "category": "conversational", "split": "dev", "got": ["global-21"], "returned": 1, "ms": 2068.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q315", "category": "error", "split": "test", "got": ["harbor-api-36", "harbor-api-25", "harbor-api-10"], "returned": 11, "ms": 1140.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q316", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 2072.8, "returned_any": false}
+{"id": "b1q317", "category": "lexical", "split": "test", "got": ["harbor-api-31", "harbor-api-30", "harbor-api-04"], "returned": 6, "ms": 1869.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q318", "category": "paraphrase_zh", "split": "dev", "got": ["harbor-api-09", "harbor-api-08", "harbor-api-32-v2"], "returned": 11, "ms": 2116.1, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q319", "category": "conversational", "split": "test", "got": ["kilnrs-03", "kilnrs-31", "kilnrs-06"], "returned": 11, "ms": 2052.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q320", "category": "paraphrase_zh", "split": "dev", "got": ["harbor-api-20", "harbor-api-02", "harbor-api-32"], "returned": 10, "ms": 1720.5, "hit1": false, "recall3": true, "rr": 0.5}
+{"id": "b1q321", "category": "lexical", "split": "test", "got": ["global-17", "orderflow-17", "orderflow-00"], "returned": 11, "ms": 2057.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q322", "category": "paraphrase_zh", "split": "dev", "got": ["pixelcraft-14", "pixelcraft-39", "pixelcraft-22"], "returned": 10, "ms": 2165.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q323", "category": "lexical", "split": "test", "got": ["tidewatch-02", "tidewatch-24", "tidewatch-20"], "returned": 11, "ms": 2170.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q324", "category": "negative_cross_project", "split": "dev", "got": ["harbor-api-04", "harbor-api-24", "harbor-api-37"], "returned": 10, "ms": 1922.3, "returned_any": true}
+{"id": "b1q325", "category": "paraphrase_en", "split": "test", "got": ["tidewatch-34", "tidewatch-11", "tidewatch-22"], "returned": 10, "ms": 2261.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q326", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 2143.7, "returned_any": false}
+{"id": "b1q327", "category": "paraphrase_zh", "split": "test", "got": ["global-18", "global-16", "global-22"], "returned": 13, "ms": 2802.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q328", "category": "lexical", "split": "dev", "got": ["pixelcraft-19", "pixelcraft-25", "pixelcraft-12"], "returned": 12, "ms": 2742.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q329", "category": "paraphrase_en", "split": "test", "got": ["pixelcraft-15", "pixelcraft-06", "pixelcraft-27"], "returned": 11, "ms": 2579.5, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q330", "category": "paraphrase_zh", "split": "dev", "got": ["pixelcraft-32", "global-26"], "returned": 2, "ms": 2386.0, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q331", "category": "conversational", "split": "test", "got": ["global-15", "global-21", "global-01"], "returned": 12, "ms": 2320.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q332", "category": "paraphrase_en", "split": "dev", "got": ["pixelcraft-39", "pixelcraft-01", "pixelcraft-21"], "returned": 11, "ms": 1942.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q333", "category": "lexical", "split": "test", "got": ["orderflow-38", "orderflow-01", "orderflow-12"], "returned": 12, "ms": 2363.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q334", "category": "error", "split": "dev", "got": ["global-04", "pixelcraft-13", "pixelcraft-03"], "returned": 20, "ms": 1953.8, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q335", "category": "error", "split": "test", "got": ["orderflow-25", "orderflow-34", "orderflow-09"], "returned": 10, "ms": 1961.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q336", "category": "lexical", "split": "dev", "got": ["tidewatch-38", "tidewatch-38-v2", "?"], "returned": 9, "ms": 2132.2, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q337", "category": "cross_lingual", "split": "test", "got": ["orderflow-35", "orderflow-02", "orderflow-05"], "returned": 14, "ms": 2118.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q338", "category": "lexical", "split": "dev", "got": ["orderflow-20", "orderflow-24-v2", "orderflow-24"], "returned": 11, "ms": 1936.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q339", "category": "paraphrase_zh", "split": "test", "got": ["tidewatch-21", "tidewatch-22", "tidewatch-24"], "returned": 10, "ms": 2058.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q340", "category": "paraphrase_en", "split": "dev", "got": ["kilnrs-25", "kilnrs-28", "kilnrs-16"], "returned": 11, "ms": 3141.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q341", "category": "paraphrase_zh", "split": "test", "got": ["kilnrs-12", "kilnrs-22", "kilnrs-35"], "returned": 10, "ms": 3274.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q342", "category": "error", "split": "dev", "got": ["tidewatch-01", "tidewatch-21", "tidewatch-17"], "returned": 10, "ms": 3424.7, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q343", "category": "conversational", "split": "test", "got": ["orderflow-36", "orderflow-34", "orderflow-25"], "returned": 11, "ms": 2966.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q344", "category": "negative_cross_project", "split": "dev", "got": ["global-18", "global-13"], "returned": 2, "ms": 2513.8, "returned_any": true}
+{"id": "b1q345", "category": "paraphrase_zh", "split": "test", "got": ["tidewatch-03", "tidewatch-23", "tidewatch-25"], "returned": 12, "ms": 2868.6, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q346", "category": "negative", "split": "dev", "got": ["global-21"], "returned": 1, "ms": 2562.6, "returned_any": true}
+{"id": "b1q347", "category": "negative", "split": "test", "got": [], "returned": 0, "ms": 1958.8, "returned_any": false}
+{"id": "b1q348", "category": "conversational", "split": "dev", "got": ["harbor-api-11", "global-04", "harbor-api-26"], "returned": 14, "ms": 2995.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q349", "category": "negative_cross_project", "split": "test", "got": ["pixelcraft-01", "pixelcraft-04", "pixelcraft-17"], "returned": 10, "ms": 2955.7, "returned_any": true}
+{"id": "b1q350", "category": "conversational", "split": "dev", "got": ["harbor-api-35", "harbor-api-26", "global-25"], "returned": 16, "ms": 2629.1, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q351", "category": "negative_cross_project", "split": "test", "got": ["pixelcraft-21", "pixelcraft-39", "pixelcraft-12"], "returned": 6, "ms": 2798.3, "returned_any": true}
+{"id": "b1q352", "category": "lexical", "split": "dev", "got": ["kilnrs-11", "kilnrs-04-v2", "kilnrs-31"], "returned": 11, "ms": 2457.9, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q353", "category": "cross_lingual", "split": "test", "got": ["kilnrs-38", "kilnrs-01", "kilnrs-09"], "returned": 11, "ms": 2539.3, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q354", "category": "lexical", "split": "dev", "got": ["tidewatch-14", "tidewatch-02", "tidewatch-20"], "returned": 13, "ms": 2278.4, "hit1": true, "recall3": true, "rr": 1.0}
+{"id": "b1q355", "category": "negative_cross_project", "split": "test", "got": ["global-01"], "returned": 1, "ms": 2675.7, "returned_any": true}
+{"id": "b1q356", "category": "negative", "split": "dev", "got": [], "returned": 0, "ms": 1425.2, "returned_any": false}

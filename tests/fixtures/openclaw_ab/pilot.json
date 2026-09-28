@@ -1,0 +1,11 @@
+{
+  "tasks": [
+    {
+      "id": "clamp-regression",
+      "source_dir": "clamp",
+      "prompt": "修复 calculator.py 中 clamp 的边界逻辑，使 test_calculator.py 全部通过。完成后运行测试。",
+      "verify": ["python3", "-m", "unittest", "discover"],
+      "timeout_seconds": 120
+    }
+  ]
+}

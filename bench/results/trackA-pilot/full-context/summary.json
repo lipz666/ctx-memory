@@ -1,0 +1,22 @@
+{
+  "system": "full-context",
+  "questions": 20,
+  "accuracy": 0.85,
+  "by_type": {
+    "abstention": "2/3",
+    "knowledge-update": "2/2",
+    "multi-session": "5/6",
+    "single-session-assistant": "2/2",
+    "single-session-preference": "1/2",
+    "single-session-user": "2/2",
+    "temporal-reasoning": "3/3"
+  },
+  "errors": 0,
+  "wall_seconds": 28,
+  "ingest_seconds_per_question_p50": 0.0,
+  "search_ms_p50": 0.0,
+  "search_ms_p95": 0.0,
+  "kept_tokens_mean": 124228,
+  "usage": {},
+  "budget_tokens": null
+}

@@ -1,0 +1,167 @@
+"""ctx under test: an isolated instance per variant, driven through its REST API."""
+import json
+import os
+import re
+import shutil
+import socket
+import subprocess
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+from .base import MemorySystem
+
+ROOT = Path(__file__).resolve().parents[2]
+BIN = Path(os.environ.get("CTX_BIN", ROOT / "target/release/ctx"))
+
+
+def free_port():
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+class CtxService:
+    """One isolated ctx daemon. Also serves embeddings for the other systems."""
+
+    def __init__(self, home, prompt_file=None, embed_workers=3, fresh=True, embedding=True, agents=(), recall=None):
+        self.agents = agents
+        self.recall = recall or {}
+        self.home = Path(home)
+        self.embedding = embedding
+        self.prompt_file = prompt_file
+        self.embed_workers = embed_workers
+        self.fresh = fresh
+        self.port = None
+        self.token = None
+        self.process = None
+
+    def start(self):
+        env = self._env()
+        if self.fresh and self.home.exists():
+            shutil.rmtree(self.home)
+        if not (self.home / "config.yaml").exists():
+            subprocess.run([BIN, "init"], env=env, check=True, capture_output=True)
+            subprocess.run([BIN, "model", "set", os.environ.get("BENCH_BASE_URL", "https://vps.lpzproxy.xyz/v1"),
+                            os.environ.get("BENCH_MODEL", "gemini-3.8-flash-high"), "--credential-ref",
+                            "env:" + os.environ.get("BENCH_KEY_ENV", "CTX_GW_KEY"), "--upstream-user-agent", "curl/8.0"],
+                           env=env, check=True, capture_output=True)
+            for agent in self.agents:
+                subprocess.run([BIN, "connect", agent], env=env, check=True, capture_output=True)
+        config = (self.home / "config.yaml").read_text()
+        self.port = int(re.search(r"^port: (\d+)", config, re.M).group(1))
+        if self.fresh:
+            self.port = free_port()
+            config = re.sub(r"^port: \d+", f"port: {self.port}", config, flags=re.M)
+            config = config.replace("history: true", "history: false")
+            config = config.replace("global_scope: true", "global_scope: false")
+            config = config.replace("daily_llm_calls: 100", "daily_llm_calls: 1000000")
+            config = config.replace("idle_minutes: 10", "idle_minutes: 100000")
+            config = re.sub(r"workers: \d+", f"workers: {self.embed_workers}", config)
+            for key, value in self.recall.items():
+                config = re.sub(rf"^  {key}: .*$", f"  {key}: {value}", config, flags=re.M)
+            if not self.embedding:
+                config = config.replace("embedding:\n  enabled: true", "embedding:\n  enabled: false")
+            if self.prompt_file:
+                config = config.replace("prompt_file: null", f"prompt_file: {json.dumps(str(self.prompt_file))}")
+            (self.home / "config.yaml").write_text(config)
+        self.token = (self.home / "token").read_text().strip()
+        self.process = subprocess.Popen([BIN, "serve"], env=env, stdout=subprocess.DEVNULL,
+                                        stderr=open(self.home / "ctxd.err.log", "a"))
+        for _ in range(600):
+            try:
+                status = self.request("/api/v1/status")
+                if status["embedding"]["loaded"] or not self.embedding:
+                    return self
+            except (urllib.error.URLError, ConnectionError, KeyError):
+                pass
+            time.sleep(0.5)
+        raise RuntimeError(f"ctx at {self.home} did not become ready")
+
+    def stop(self):
+        if self.process:
+            self.process.terminate()
+            self.process.wait(timeout=30)
+            self.process = None
+
+    def _env(self):
+        return dict(os.environ, CTX_HOME=str(self.home))
+
+    def request(self, path, data=None, method=None, timeout=600):
+        req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", method=method or ("POST" if data is not None else "GET"),
+                                     data=json.dumps(data).encode() if data is not None else None,
+                                     headers={"X-Ctx-Token": self.token, "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            return json.load(response)
+
+    def embed(self, texts):
+        vectors = []
+        for start in range(0, len(texts), 128):
+            reply = self.request("/api/v1/embeddings", {"input": texts[start:start + 128]})
+            vectors += [item["embedding"] for item in sorted(reply["data"], key=lambda d: d["index"])]
+        return vectors
+
+    def embeddings_base_url(self):
+        return f"http://127.0.0.1:{self.port}/api/v1"
+
+
+def namespace(ns):
+    return re.sub(r"[^a-z0-9_.-]", "-", ns.lower())
+
+
+class Ctx(MemorySystem):
+    """ctx with its built-in extraction prompt (tuned for coding work), or a variant prompt."""
+
+    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None):
+        self.name = name
+        self.mode = mode
+        self.episodes = episodes
+        # Reuse another variant's memory store (same memories, no new extraction) and only
+        # build the conversation excerpts; ingestion then does nothing.
+        self.reuse_from = reuse_from
+        self.service = CtxService(home, prompt_file=prompt_file, embed_workers=embed_workers, embedding=embedding, recall=recall,
+                                  fresh=reuse_from is None)
+
+    def setup(self):
+        if self.reuse_from:
+            if self.service.home.exists():
+                shutil.rmtree(self.service.home)
+            shutil.copytree(self.reuse_from, self.service.home)
+            subprocess.run([BIN, "reindex"], env=self.service._env(), check=True, capture_output=True)
+        self.service.start()
+
+    def teardown(self):
+        self.service.stop()
+
+    def ingest_session(self, ns, session_id, messages, timestamp, project=None):
+        if self.reuse_from:
+            return None
+        key = f"{namespace(ns)}:{session_id}"
+        self.service.request("/api/v1/sessions/ingest", {"session": key, "agent": "bench", "project": namespace(project or ns),
+                                                         "observed_at": timestamp, "messages": messages})
+        from common.llm import wait_for_gateway
+        for attempt in range(5):
+            try:
+                return self.service.request(f"/api/v1/sessions/{urllib.parse.quote(key, safe='')}/extract?wait=true", {})
+            except urllib.error.HTTPError as error:
+                if attempt == 4:
+                    raise RuntimeError(f"extraction failed: {error.read()[:300]!r}") from error
+                wait_for_gateway()
+
+    def add_memory(self, ns, text, project=None):
+        self.service.request("/api/v1/memories", {"content": text, "type": "fact", "scope": namespace(project or ns)})
+
+    def search(self, ns, query, project=None, limit=20):
+        return [text for text, _ in self.search_scored(ns, query, project, limit)]
+
+    def search_scored(self, ns, query, project=None, limit=20):
+        params = urllib.parse.urlencode({"q": query, "project": namespace(project or ns), "limit": min(limit, 50),
+                                           "mode": self.mode, "episodes": self.episodes})
+        hits = self.service.request(f"/api/v1/recall?{params}")
+        return [(f"[{(h.get('observed_at') or h.get('created_at') or '')}] {h['content']}", h["score"]) for h in hits]
+
+    def usage(self):
+        stats = self.service.request("/api/v1/stats")
+        return {k: stats[k] for k in ("memories", "engine_llm_calls", "extracted_sessions")}

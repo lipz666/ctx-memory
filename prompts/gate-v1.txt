@@ -1,0 +1,1 @@
+Decide whether prior work memories help this step. Return only JSON: {"recall":bool,"why":string,"queries":string[],"types":string[],"card_ids":string[]}. Be conservative.

@@ -1,0 +1,24 @@
+[
+  {
+    "step": 3,
+    "project": "ledger",
+    "query": "The reconcile payment report differs by one cent after three exports.",
+    "llm_selected": [
+      "ledger"
+    ],
+    "human_selected": null,
+    "reviewer": null,
+    "reason": null
+  },
+  {
+    "step": 7,
+    "project": "payments",
+    "query": "A schema mismatch happened during deploy payments.",
+    "llm_selected": [
+      "deploy"
+    ],
+    "human_selected": null,
+    "reviewer": null,
+    "reason": null
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "tasks": [
+    {
+      "id": "billing-noisy-ci",
+      "source_dir": "billing",
+      "prompt": "CI is red for this billing package. Read README.md, run `python3 -m unittest discover -s tests`, and fix the code until the suite passes. Do not edit tests or silence logging. Run the full suite again before finishing.",
+      "verify": ["python3", "${MANIFEST_DIR}/../../verify_ab_workloads.py", "billing"],
+      "timeout_seconds": 600,
+      "note": "Long-session workload: each test run prints ~140-160 KB of DEBUG logs, so old tool results cross the default eviction threshold."
+    }
+  ]
+}

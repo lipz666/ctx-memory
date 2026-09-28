@@ -1,0 +1,23 @@
+{
+  "abstain_rate": 0.3333333333333333,
+  "estimated_injected_tokens": 451,
+  "expected_memories": 7,
+  "hit_rate": 1.0,
+  "hit_steps": 7,
+  "injection_precision": 0.875,
+  "injections": 8,
+  "labeled_steps": 12,
+  "memory_recall": 1.0,
+  "needed_steps": 7,
+  "retrieval_p95_ms": 1.801792,
+  "steps": 12,
+  "trigger_hit_rate": 1.0,
+  "true_positive": 7,
+  "version": "0.4.0-alpha.1",
+  "source": "fictional trajectories",
+  "labeler": "LLM initial labels",
+  "label_model_reported": "gemini-3.8-flash",
+  "designer_agreement_steps": 12,
+  "human_review_status": "pending",
+  "human_review_count": 2
+}

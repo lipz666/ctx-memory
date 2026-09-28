@@ -1,0 +1,436 @@
+{
+  "kind": "paired_openclaw_metered",
+  "model": "gemini-3.8-flash-high",
+  "tasks": 1,
+  "repeats": 3,
+  "results": [
+    {
+      "task_id": "billing-noisy-ci",
+      "arm": "ctx",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 227.723,
+      "reported_usage": {
+        "input_tokens": 459166,
+        "output_tokens": 2332,
+        "cache_read_tokens": 1357473,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 1816639,
+        "cache_hit_rate": 0.7472442240863485
+      },
+      "proxy_usage": {
+        "steps": 31,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 1816639,
+        "output_tokens": 2332,
+        "cached_input_tokens": 1357473,
+        "cache_hit_rate": 0.7472,
+        "modified_requests": 12,
+        "evicted_tool_results": 36,
+        "cost": {
+          "uncached_input_tokens": 459166,
+          "cached_input_tokens": 1357473,
+          "output_tokens": 2332,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 31,
+        "totals": {
+          "system": 402064,
+          "agent_tools": 596118,
+          "ctx_mcp_tools": 0,
+          "history": 1305150,
+          "other_fields": 11345,
+          "ctx_added": 0,
+          "ctx_evicted": 498039,
+          "evictable_old_tool_results": 819085,
+          "actual_input": 1816639,
+          "cached_input": 1357473,
+          "uncached_input": 459166,
+          "output": 2332
+        },
+        "share_of_input": {
+          "system": 0.2213,
+          "agent_tools": 0.3281,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.7184,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.4509
+        },
+        "fixed_prefix_per_step": 32199,
+        "steps_where_default_eviction_fires": 12,
+        "modified_steps": 12,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 0,
+      "order": 0
+    },
+    {
+      "task_id": "billing-noisy-ci",
+      "arm": "direct",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 291.716,
+      "reported_usage": {
+        "input_tokens": 548009,
+        "output_tokens": 3182,
+        "cache_read_tokens": 2464963,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 3012972,
+        "cache_hit_rate": 0.8181167963061058
+      },
+      "proxy_usage": {
+        "steps": 40,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 3025518,
+        "output_tokens": 4017,
+        "cached_input_tokens": 2464963,
+        "cache_hit_rate": 0.8147,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "cost": {
+          "uncached_input_tokens": 560555,
+          "cached_input_tokens": 2464963,
+          "output_tokens": 4017,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 40,
+        "totals": {
+          "system": 556028,
+          "agent_tools": 823858,
+          "ctx_mcp_tools": 0,
+          "history": 1629887,
+          "other_fields": 15743,
+          "ctx_added": 0,
+          "ctx_evicted": 0,
+          "evictable_old_tool_results": 980473,
+          "actual_input": 3025518,
+          "cached_input": 2464963,
+          "uncached_input": 560555,
+          "output": 4017
+        },
+        "share_of_input": {
+          "system": 0.1838,
+          "agent_tools": 0.2723,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.5387,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.3241
+        },
+        "fixed_prefix_per_step": 34497,
+        "steps_where_default_eviction_fires": 6,
+        "modified_steps": 0,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 0,
+      "order": 1
+    },
+    {
+      "task_id": "billing-noisy-ci",
+      "arm": "direct",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 153.413,
+      "reported_usage": {
+        "input_tokens": 327779,
+        "output_tokens": 1853,
+        "cache_read_tokens": 1833204,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 2160983,
+        "cache_hit_rate": 0.8483194916387589
+      },
+      "proxy_usage": {
+        "steps": 25,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 2160983,
+        "output_tokens": 1853,
+        "cached_input_tokens": 1833204,
+        "cache_hit_rate": 0.8483,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "cost": {
+          "uncached_input_tokens": 327779,
+          "cached_input_tokens": 1833204,
+          "output_tokens": 1853,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 25,
+        "totals": {
+          "system": 366376,
+          "agent_tools": 543081,
+          "ctx_mcp_tools": 0,
+          "history": 1241225,
+          "other_fields": 10302,
+          "ctx_added": 0,
+          "ctx_evicted": 0,
+          "evictable_old_tool_results": 770275,
+          "actual_input": 2160983,
+          "cached_input": 1833204,
+          "uncached_input": 327779,
+          "output": 1853
+        },
+        "share_of_input": {
+          "system": 0.1695,
+          "agent_tools": 0.2513,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.5744,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.3564
+        },
+        "fixed_prefix_per_step": 36378,
+        "steps_where_default_eviction_fires": 7,
+        "modified_steps": 0,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 1,
+      "order": 0
+    },
+    {
+      "task_id": "billing-noisy-ci",
+      "arm": "ctx",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 311.296,
+      "reported_usage": {
+        "input_tokens": 656515,
+        "output_tokens": 2114,
+        "cache_read_tokens": 1727506,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 2384021,
+        "cache_hit_rate": 0.7246186170339942
+      },
+      "proxy_usage": {
+        "steps": 44,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 2398859,
+        "output_tokens": 3060,
+        "cached_input_tokens": 1727506,
+        "cache_hit_rate": 0.7201,
+        "modified_requests": 35,
+        "evicted_tool_results": 96,
+        "cost": {
+          "uncached_input_tokens": 671353,
+          "cached_input_tokens": 1727506,
+          "output_tokens": 3060,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 44,
+        "totals": {
+          "system": 529251,
+          "agent_tools": 784350,
+          "ctx_mcp_tools": 0,
+          "history": 1709664,
+          "other_fields": 15010,
+          "ctx_added": 0,
+          "ctx_evicted": 639418,
+          "evictable_old_tool_results": 1054259,
+          "actual_input": 2398859,
+          "cached_input": 1727506,
+          "uncached_input": 671353,
+          "output": 3060
+        },
+        "share_of_input": {
+          "system": 0.2206,
+          "agent_tools": 0.327,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.7127,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.4395
+        },
+        "fixed_prefix_per_step": 29855,
+        "steps_where_default_eviction_fires": 14,
+        "modified_steps": 35,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 1,
+      "order": 1
+    },
+    {
+      "task_id": "billing-noisy-ci",
+      "arm": "ctx",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 391.819,
+      "reported_usage": {
+        "input_tokens": 741087,
+        "output_tokens": 2235,
+        "cache_read_tokens": 2575720,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 3316807,
+        "cache_hit_rate": 0.7765661372518811
+      },
+      "proxy_usage": {
+        "steps": 49,
+        "actual_models": [
+          "gemini-3.8-flash"
+        ],
+        "input_tokens": 3337205,
+        "output_tokens": 4243,
+        "cached_input_tokens": 2575720,
+        "cache_hit_rate": 0.7718,
+        "modified_requests": 28,
+        "evicted_tool_results": 57,
+        "cost": {
+          "uncached_input_tokens": 761485,
+          "cached_input_tokens": 2575720,
+          "output_tokens": 4243,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 49,
+        "totals": {
+          "system": 640499,
+          "agent_tools": 948954,
+          "ctx_mcp_tools": 0,
+          "history": 1839707,
+          "other_fields": 18208,
+          "ctx_added": 0,
+          "ctx_evicted": 110164,
+          "evictable_old_tool_results": 884626,
+          "actual_input": 3337205,
+          "cached_input": 2575720,
+          "uncached_input": 761485,
+          "output": 4243
+        },
+        "share_of_input": {
+          "system": 0.1919,
+          "agent_tools": 0.2844,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.5513,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.2651
+        },
+        "fixed_prefix_per_step": 32438,
+        "steps_where_default_eviction_fires": 1,
+        "modified_steps": 28,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 2,
+      "order": 0
+    },
+    {
+      "task_id": "billing-noisy-ci",
+      "arm": "direct",
+      "agent_exit": 0,
+      "verification_exit": 0,
+      "success": true,
+      "elapsed_seconds": 341.851,
+      "reported_usage": {
+        "input_tokens": 786707,
+        "output_tokens": 2654,
+        "cache_read_tokens": 2922211,
+        "cache_write_tokens": 0,
+        "total_input_tokens": 3708918,
+        "cache_hit_rate": 0.7878877343742838
+      },
+      "proxy_usage": {
+        "steps": 45,
+        "actual_models": [
+          "gemini-3.8-flash",
+          "gemini-3.8-flash-control"
+        ],
+        "input_tokens": 3721581,
+        "output_tokens": 3622,
+        "cached_input_tokens": 2922211,
+        "cache_hit_rate": 0.7852,
+        "modified_requests": 0,
+        "evicted_tool_results": 0,
+        "cost": {
+          "uncached_input_tokens": 799370,
+          "cached_input_tokens": 2922211,
+          "output_tokens": 3622,
+          "engine_llm_calls": 0,
+          "engine_input_tokens": 0,
+          "engine_output_tokens": 0
+        }
+      },
+      "attribution": {
+        "steps": 45,
+        "totals": {
+          "system": 647846,
+          "agent_tools": 959966,
+          "ctx_mcp_tools": 0,
+          "history": 2095363,
+          "other_fields": 18404,
+          "ctx_added": 0,
+          "ctx_evicted": 0,
+          "evictable_old_tool_results": 1446233,
+          "actual_input": 3721581,
+          "cached_input": 2922211,
+          "uncached_input": 799370,
+          "output": 3622
+        },
+        "share_of_input": {
+          "system": 0.1741,
+          "agent_tools": 0.2579,
+          "ctx_mcp_tools": 0.0,
+          "history": 0.563,
+          "ctx_added": 0.0,
+          "evictable_old_tool_results": 0.3886
+        },
+        "fixed_prefix_per_step": 35729,
+        "steps_where_default_eviction_fires": 16,
+        "modified_steps": 0,
+        "policy": {
+          "tool_result_min_tokens": 500,
+          "evict_threshold_tokens": 20000
+        },
+        "note": "Parts are chars/4 estimates scaled to gateway-reported input per step."
+      },
+      "repeat": 2,
+      "order": 1
+    }
+  ],
+  "note": "Success uses each task's verifier. Both arms are metered by ctx unless --direct-via-gateway. USD appears only with explicit prices."
+}
