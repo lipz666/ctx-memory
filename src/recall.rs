@@ -39,7 +39,7 @@ pub enum Mode {
     Search,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Query<'a> {
     pub mode: Mode,
     /// Text to search for; `None` skips search (triggers and always-on only).
@@ -184,6 +184,107 @@ fn episode_hits(
 }
 
 pub fn recall(store: &Store, query: &Query) -> Result<Vec<Hit>> {
+    let mut hits = recall_ranked(store, query)?;
+    if query.mode == Mode::Search {
+        group_by_topic(store, &mut hits);
+    }
+    Ok(hits)
+}
+
+/// A search plan for a hard question (made by `planner`): sub-queries that each cover
+/// one part of the question, and the date window its events fall in, if any.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Plan {
+    pub queries: Vec<String>,
+    pub after: Option<String>,
+    pub before: Option<String>,
+}
+
+/// Score added to a hit dated inside the plan's window.
+const WINDOW_BOOST: f64 = 0.15;
+
+/// Search with a plan: the question and every sub-query are searched over a wide pool,
+/// hits dated inside the window are boosted, then the best hit of each query is kept
+/// first (every part of the question is covered) and the rest filled by score. The
+/// result is cut to the query's limit plus excerpts and grouped by topic.
+pub fn recall_planned(store: &Store, query: &Query, plan: &Plan) -> Result<Vec<Hit>> {
+    let window = (
+        plan.after.as_deref().and_then(date_range).map(|r| r.0),
+        plan.before.as_deref().and_then(date_range).map(|r| r.1),
+    );
+    let in_window = |memory: &Memory| {
+        (window.0.is_some() || window.1.is_some())
+            && date_range(&date_key(memory)).is_some_and(|(start, end)| {
+                window.0.is_none_or(|after| end >= after) && window.1.is_none_or(|before| start <= before)
+            })
+    };
+    let texts: Vec<String> = query.text.into_iter().map(str::to_owned).chain(plan.queries.iter().cloned()).collect();
+    let mut lists: Vec<Vec<Hit>> = vec![];
+    for text in &texts {
+        // A wide pool per query: the window boost may promote lower-ranked hits.
+        let wide = Query { text: Some(text), limit: (query.limit * 3).max(20), ..query.clone() };
+        let mut hits = recall_ranked(store, &wide)?;
+        for hit in hits.iter_mut().filter(|h| h.channel != "rule" && in_window(&h.memory)) {
+            hit.score += WINDOW_BOOST;
+            hit.reason.push_str(" window");
+        }
+        hits.sort_by(|a, b| {
+            (b.channel == "rule")
+                .cmp(&(a.channel == "rule"))
+                .then(b.score.total_cmp(&a.score))
+                .then_with(|| a.memory.id.cmp(&b.memory.id))
+        });
+        lists.push(hits);
+    }
+    let rules = lists.first().map_or(0, |l| l.iter().filter(|h| h.channel == "rule").count());
+    let cap = query.limit + query.episodes + rules;
+    let mut seen = HashSet::new();
+    let mut hits: Vec<Hit> = lists
+        .first()
+        .into_iter()
+        .flatten()
+        .filter(|h| h.channel == "rule")
+        .inspect(|h| {
+            seen.insert(h.memory.id.clone());
+        })
+        .cloned()
+        .collect();
+    for list in &lists {
+        if let Some(best) = list.iter().find(|h| h.channel != "rule" && !seen.contains(&h.memory.id)) {
+            seen.insert(best.memory.id.clone());
+            hits.push(best.clone());
+        }
+    }
+    let mut rest: Vec<Hit> = lists.into_iter().flatten().filter(|h| !seen.contains(&h.memory.id)).collect();
+    rest.sort_by(|a, b| b.score.total_cmp(&a.score).then_with(|| a.memory.id.cmp(&b.memory.id)));
+    for hit in rest {
+        if hits.len() >= cap {
+            break;
+        }
+        if seen.insert(hit.memory.id.clone()) {
+            hits.push(hit);
+        }
+    }
+    hits.truncate(cap);
+    group_by_topic(store, &mut hits);
+    Ok(hits)
+}
+
+/// The day range a (possibly partial) date covers, as yyyymmdd numbers:
+/// "2023" → 20230101..20231231, "2023-03" → 20230301..20230331, "2023/03/05 (Sun)" → one day.
+pub fn date_range(date: &str) -> Option<(u32, u32)> {
+    let digits: String = date.chars().filter(char::is_ascii_digit).collect();
+    let number = |s: &str| s.parse::<u32>().ok();
+    match digits.len() {
+        4 => Some((number(&digits)? * 10000 + 101, number(&digits)? * 10000 + 1231)),
+        6 => Some((number(&digits)? * 100 + 1, number(&digits)? * 100 + 31)),
+        n if n >= 8 => number(&digits[..8]).map(|d| (d, d)),
+        _ => None,
+    }
+}
+
+/// Search without topic grouping (the ranking every mode shares).
+fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
     let text = query
         .text
         .map(str::trim)
@@ -196,7 +297,13 @@ pub fn recall(store: &Store, query: &Query) -> Result<Vec<Hit>> {
     let excluded = |id: &str| query.exclude.is_some_and(|set| set.contains(id));
     let config = &store.config.recall;
     let mut hits = store.with_index(|index, all| {
-        let usable = |m: &Memory| m.recallable() && m.in_scope(query.project) && !excluded(&m.id);
+        // Topic digests are long overviews for explicit questions, never injected.
+        let usable = |m: &Memory| {
+            m.recallable()
+                && m.in_scope(query.project)
+                && !excluded(&m.id)
+                && (query.mode == Mode::Search || m.kind != "digest")
+        };
         let mut always = vec![];
         let mut found: HashMap<String, Hit> = HashMap::new();
         if query.always_on {
@@ -277,6 +384,24 @@ pub fn recall(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                     group: None,
                 });
             }
+            // Entity index (search mode): every memory about a person, place or product
+            // the question names, even when its text says "the user's sister".
+            if search {
+                for memory in all.values().filter(|m| !m.always_on() && usable(m)) {
+                    let Some(entity) = memory.entities.iter().find(|e| mentions(text, e)) else {
+                        continue;
+                    };
+                    let hit = found.entry(memory.id.clone()).or_insert(Hit {
+                        memory: memory.clone(),
+                        channel: "search",
+                        score: ENTITY_SCORE,
+                        reason: String::new(),
+                        group: None,
+                    });
+                    hit.score = hit.score.max(ENTITY_SCORE) + ENTITY_BOOST;
+                    hit.reason.push_str(&format!(" entity:{entity}"));
+                }
+            }
         }
         for id in query.extra_ids {
             if let Some(memory) = all.get(id).filter(|m| !m.always_on() && usable(m)) {
@@ -320,9 +445,6 @@ pub fn recall(store: &Store, query: &Query) -> Result<Vec<Hit>> {
         });
         hits.extend(ranked);
     }
-    if query.mode == Mode::Search {
-        group_by_topic(store, &mut hits);
-    }
     Ok(hits)
 }
 
@@ -346,12 +468,55 @@ fn topics(vectors: &[Option<Vec<f32>>]) -> Vec<Vec<usize>> {
     groups
 }
 
-/// Sortable date of a hit ("2023/05/30 (Tue) 22:16" and RFC 3339 both become
-/// "202305302216").
+/// Base score of a memory found only through the entity index, and the boost for any
+/// memory whose entities the question names.
+const ENTITY_SCORE: f64 = 0.4;
+const ENTITY_BOOST: f64 = 0.1;
+
+/// Whether `text` names `entity` as a whole word (case-insensitive; CJK names by
+/// substring). Latin names shorter than 3 characters are ignored.
+fn mentions(text: &str, entity: &str) -> bool {
+    let entity = entity.trim().to_lowercase();
+    let cjk = entity.chars().any(|c| c as u32 >= 0x2E80);
+    if entity.is_empty() || (!cjk && entity.chars().count() < 3) {
+        return false;
+    }
+    let text = text.to_lowercase();
+    let boundary = |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric());
+    text.match_indices(&entity).any(|(start, _)| {
+        cjk || (boundary(text[..start].chars().next_back())
+            && boundary(text[start + entity.len()..].chars().next()))
+    })
+}
+
+/// Earlier versions of a memory (the chain it superseded), newest first:
+/// (date, content). At most `depth` entries.
+pub fn history(store: &Store, memory: &Memory, depth: usize) -> Vec<(String, String)> {
+    let mut out = vec![];
+    let mut next = memory.supersedes.first().cloned();
+    while let Some(id) = next {
+        let Some(old) = store.memory(&id) else { break };
+        if out.len() == depth {
+            break;
+        }
+        let date = old
+            .event_at
+            .clone()
+            .or_else(|| old.observed_at.clone())
+            .unwrap_or_else(|| old.created_at.chars().take(10).collect());
+        out.push((date, old.body.clone()));
+        next = old.supersedes.first().cloned();
+    }
+    out
+}
+
+/// Sortable date of a hit: when the event happened if known, else when it was said
+/// ("2023/05/30 (Tue) 22:16", "2023-05" and RFC 3339 all become digit strings).
 fn date_key(memory: &Memory) -> String {
     memory
-        .observed_at
+        .event_at
         .as_deref()
+        .or(memory.observed_at.as_deref())
         .unwrap_or(&memory.created_at)
         .chars()
         .filter(char::is_ascii_digit)
@@ -459,6 +624,58 @@ mod tests {
         )
         .unwrap();
         assert_eq!(hits.iter().filter(|h| h.channel == "episode").count(), 1);
+    }
+
+    #[test]
+    fn planned_search_merges_subqueries_and_boosts_the_window() {
+        let (_dir, store) = store();
+        let dated = |content: &str, date: &str| {
+            let id = add(&store, content, "fact", "q", None);
+            let mut memory = store.memory(&id).unwrap();
+            memory.event_at = Some(date.into());
+            store.save_memory(&memory, "date").unwrap();
+            id
+        };
+        let jazz = dated("The user went to a jazz concert downtown", "2023-02-10");
+        let rock = dated("The user went to a rock concert with Sam", "2023-03-12");
+        dated("The user went to a folk concert in the park", "2023-04-02");
+        let lens = add(&store, "The user bought a Canon lens", "fact", "q", None);
+        let query = Query { text: Some("concert"), project: Some("q"), limit: 1, mode: Mode::Search, ..Default::default() };
+        let ids = |hits: Vec<Hit>| hits.into_iter().map(|h| h.memory.id).collect::<Vec<_>>();
+        let march = Plan { after: Some("2023-03-01".into()), before: Some("2023-03-31".into()), ..Default::default() };
+        assert_eq!(ids(recall_planned(&store, &query, &march).unwrap()), std::slice::from_ref(&rock));
+        let february = Plan { before: Some("2023-02".into()), ..Default::default() };
+        assert_eq!(ids(recall_planned(&store, &query, &february).unwrap()), [jazz]);
+        let both = Plan { queries: vec!["Canon lens".into()], ..march };
+        let found = ids(recall_planned(&store, &Query { limit: 2, ..query }, &both).unwrap());
+        assert!(found.contains(&rock) && found.contains(&lens), "{found:?}");
+    }
+
+    #[test]
+    fn entity_index_finds_memories_that_do_not_repeat_the_name() {
+        let (_dir, store) = store();
+        let with_entities = |content: &str, entities: &[&str]| {
+            let id = add(&store, content, "fact", "q", None);
+            let mut memory = store.memory(&id).unwrap();
+            memory.entities = entities.iter().map(|e| e.to_string()).collect();
+            store.save_memory(&memory, "entities").unwrap();
+            id
+        };
+        let moved = with_entities("The user's sister moved to Lisbon in November", &["Mira", "Lisbon"]);
+        let job = with_entities("Her new job is at a design studio", &["Mira"]);
+        with_entities("The user adopted a cat", &["Miso"]);
+        let search = |text: &str, mode| {
+            recall(&store, &Query { text: Some(text), project: Some("q"), limit: 10, mode, ..Default::default() })
+                .unwrap()
+                .into_iter()
+                .map(|h| h.memory.id)
+                .collect::<Vec<_>>()
+        };
+        let found = search("What is new with Mira?", Mode::Search);
+        assert!(found.contains(&moved) && found.contains(&job) && found.len() == 2, "{found:?}");
+        assert!(!search("What is new with Mira?", Mode::Inject).contains(&moved), "no entity channel in injection");
+        assert!(search("Tell me about Miranda", Mode::Search).is_empty(), "whole words only");
+        assert!(mentions("妹妹米拉搬家了", "米拉"));
     }
 
     #[test]

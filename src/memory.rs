@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fs, path::Path};
 
-pub const TYPES: [&str; 5] = ["rule", "fact", "lesson", "skill", "intent"];
+pub const TYPES: [&str; 6] = ["rule", "fact", "lesson", "skill", "intent", "digest"];
 pub const TRIGGER_KINDS: [&str; 4] = ["keyword", "error", "tool", "file"];
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -54,6 +54,18 @@ pub struct Memory {
     /// When the fact was observed (the session's time), if different from creation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub observed_at: Option<String>,
+    /// When the event happened or the fact became true (ISO date, possibly partial:
+    /// "2023-05", "2023-05-20"), if known; `observed_at` is when it was said.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event_at: Option<String>,
+    /// Short topic labels shared by related memories: the kind of thing
+    /// ("workshops") and optionally its subject ("marketing"); used for topic digests.
+    /// A digest carries the one topic it summarizes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub topics: Vec<String>,
+    /// Normalized names of the people, places, products and projects mentioned.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub entities: Vec<String>,
     /// Markdown body after the front matter.
     #[serde(skip)]
     pub body: String,
@@ -138,6 +150,9 @@ impl Memory {
             created_at: String::new(),
             updated_at: String::new(),
             observed_at,
+            event_at: None,
+            topics: vec![],
+            entities: vec![],
             body: text,
         }
     }
@@ -220,7 +235,13 @@ pub fn trigger_matches(trigger: &Trigger, features: &Value) -> bool {
         }
         "error" => field("error_sig").contains(&pattern),
         "tool" => field("tool") == pattern,
-        "file" => Glob::new(&trigger.pattern)
+        // A relative pattern ("billing/tax.py", "migrations/*.sql") also matches the same
+        // path under any directory, since agents usually pass absolute paths.
+        "file" => Glob::new(&if trigger.pattern.starts_with('/') || trigger.pattern.starts_with("**") {
+            trigger.pattern.clone()
+        } else {
+            format!("{{{},**/{}}}", trigger.pattern, trigger.pattern)
+        })
             .map(|g| g.compile_matcher())
             .is_ok_and(|matcher| {
                 features
@@ -296,6 +317,9 @@ pub fn create(input: NewMemory, source: &str) -> Result<Memory> {
         created_at: now.clone(),
         updated_at: now,
         observed_at: None,
+        event_at: None,
+        topics: vec![],
+        entities: vec![],
         body: content,
     })
 }
@@ -423,6 +447,9 @@ fn from_v1(head: &serde_yaml::Value) -> Result<Memory> {
         created_at: text("created_at").unwrap_or_default(),
         updated_at: text("updated_at").unwrap_or_default(),
         observed_at: None,
+        event_at: None,
+        topics: vec![],
+        entities: vec![],
         body: String::new(),
     })
 }

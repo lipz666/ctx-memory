@@ -11,6 +11,7 @@ mod index;
 mod inject;
 mod llm;
 mod mcp;
+mod planner;
 mod memory;
 mod observer;
 mod proxy;

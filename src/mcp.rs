@@ -79,7 +79,7 @@ fn handle(store: &Store, project: Option<&str>, request: &Value) -> Option<Value
 /// and set_intent. All tools stay callable by name.
 fn tools(mode: &str) -> Vec<Value> {
     let mut tools = vec![
-        json!({"name":"recall","description":"Search long-term memory from earlier sessions: project facts, past lessons, user preferences. Use before non-trivial work or when stuck on an error.","inputSchema":{"type":"object","properties":{"query":{"type":"string","description":"What you need to know, in natural language"},"limit":{"type":"integer","minimum":1,"maximum":20}},"required":["query"]}}),
+        json!({"name":"recall","description":"Search long-term memory from earlier sessions: project facts, past lessons, user preferences. Use before non-trivial work or when stuck on an error.","inputSchema":{"type":"object","properties":{"query":{"type":"string","description":"What you need to know, in natural language"},"limit":{"type":"integer","minimum":1,"maximum":20},"deep":{"type":"boolean","description":"For questions that combine several facts, compare events or refer to a time period: plan sub-queries and a date window first (one extra model call)"}},"required":["query"]}}),
         json!({"name":"remember","description":"Save something future sessions should know: a user preference, a project convention or command, or a lesson from a mistake. One self-contained statement.","inputSchema":{"type":"object","properties":{"content":{"type":"string"},"type":{"type":"string","enum":["fact","lesson","skill"]},"scope":{"type":"string","enum":["project","global"],"description":"project (default): this repository only; global: everywhere, e.g. user preferences"}},"required":["content"]}}),
         json!({"name":"forget","description":"Archive a memory that is wrong or no longer true.","inputSchema":{"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}}),
         json!({"name":"expand","description":"Read a memory (mem_...) or archived tool output (evt_...) by id.","inputSchema":{"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}}),
@@ -109,17 +109,20 @@ fn call_tool(store: &Store, project: Option<&str>, params: &Value) -> Value {
                 .unwrap_or(5)
                 .min(20) as usize;
             store.ensure_vectors()?;
-            let hits = recall::recall(
-                store,
-                &Query {
-                    text: Some(query),
-                    project,
-                    limit,
-                    mode: recall::Mode::Search,
-                    episodes: store.config.recall.search_episodes,
-                    ..Default::default()
-                },
-            )?;
+            let search = Query {
+                text: Some(query),
+                project,
+                limit,
+                mode: recall::Mode::Search,
+                episodes: store.config.recall.search_episodes,
+                ..Default::default()
+            };
+            let deep = args.get("deep").and_then(Value::as_bool) == Some(true);
+            let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+            let hits = match deep.then(|| crate::planner::plan_blocking(store, query, &today)) {
+                Some(Ok(plan)) => recall::recall_planned(store, &search, &plan)?,
+                _ => recall::recall(store, &search)?,
+            };
             let step = store.event(
                 "mcp",
                 project,
@@ -133,7 +136,7 @@ fn call_tool(store: &Store, project: Option<&str>, params: &Value) -> Value {
             }
             // Hits of one topic share a group and are in chronological order; the date
             // tells which value is current.
-            Ok(json!(hits.iter().map(|h| json!({"id":h.memory.id,"type":h.memory.kind,"scope":h.memory.scope,"date":h.memory.observed_at.as_deref().unwrap_or(&h.memory.created_at),"group":h.group,"content":h.memory.body,"score":(h.score*100.0).round()/100.0})).collect::<Vec<_>>()))
+            Ok(json!(hits.iter().map(|h| json!({"id":h.memory.id,"type":h.memory.kind,"scope":h.memory.scope,"date":h.memory.observed_at.as_deref().unwrap_or(&h.memory.created_at),"event_date":h.memory.event_at,"group":h.group,"previously":recall::history(store, &h.memory, 3).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"content":h.memory.body,"score":(h.score*100.0).round()/100.0})).collect::<Vec<_>>()))
         }
         "remember" => {
             let content = arg(args, "content")?;

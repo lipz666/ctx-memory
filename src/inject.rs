@@ -158,8 +158,13 @@ pub fn render(hit: &Hit) -> String {
         .chars()
         .take(10)
         .collect::<String>();
+    let event = memory
+        .event_at
+        .as_deref()
+        .map(|e| format!(" event=\"{e}\""))
+        .unwrap_or_default();
     format!(
-        "<ctx-memory id=\"{}\" type=\"{}\" scope=\"{}\" date=\"{date}\"{note}>\n{}\n</ctx-memory>",
+        "<ctx-memory id=\"{}\" type=\"{}\" scope=\"{}\" date=\"{date}\"{event}{note}>\n{}\n</ctx-memory>",
         memory.id, memory.kind, memory.scope, memory.body
     )
 }

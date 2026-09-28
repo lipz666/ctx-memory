@@ -203,6 +203,10 @@ pub struct RecallParams {
     mode: Option<String>,
     /// Conversation excerpts to add in search mode (default: config `search_episodes`).
     episodes: Option<usize>,
+    /// Search mode: plan sub-queries and a date window with one model call first.
+    deep: Option<bool>,
+    /// "Today" for relative dates in a deep search (default: the current date).
+    now: Option<String>,
 }
 pub async fn recall(
     State(app): State<App>,
@@ -210,11 +214,20 @@ pub async fn recall(
     UrlQuery(params): UrlQuery<RecallParams>,
 ) -> ApiResult {
     require(&headers, &app.store)?;
+    let search = params.mode.as_deref() != Some("inject");
+    let plan = if search && params.deep == Some(true) {
+        let today = params
+            .now
+            .clone()
+            .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
+        // Without a plan the search still runs, just as an ordinary search.
+        crate::planner::plan(&app.store, &params.q, &today).await.ok()
+    } else {
+        None
+    };
     let store = app.store.clone();
     let hits = tokio::task::spawn_blocking(move || {
-        recall::recall(
-            &store,
-            &Query {
+        let query = Query {
                 text: Some(&params.q),
                 project: params.project.as_deref(),
                 limit: params.limit.unwrap_or(5).min(50),
@@ -228,13 +241,16 @@ pub async fn recall(
                     .unwrap_or(store.config.recall.search_episodes)
                     .min(20),
                 ..Default::default()
-            },
-        )
+            };
+        match &plan {
+            Some(plan) => recall::recall_planned(&store, &query, plan),
+            None => recall::recall(&store, &query),
+        }
     })
     .await
     .map_err(api_error)?
     .map_err(api_error)?;
-    Ok(axum::Json(json!(hits.iter().map(|h| json!({"id":h.memory.id,"title":h.memory.title,"content":h.memory.body,"type":h.memory.kind,"scope":h.memory.scope,"score":h.score,"channel":h.channel,"group":h.group,"observed_at":h.memory.observed_at,"created_at":h.memory.created_at})).collect::<Vec<_>>())))
+    Ok(axum::Json(json!(hits.iter().map(|h| json!({"id":h.memory.id,"title":h.memory.title,"content":h.memory.body,"type":h.memory.kind,"scope":h.memory.scope,"score":h.score,"channel":h.channel,"group":h.group,"observed_at":h.memory.observed_at,"event_at":h.memory.event_at,"topics":h.memory.topics,"history":recall::history(&app.store, &h.memory, 3).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"created_at":h.memory.created_at})).collect::<Vec<_>>())))
 }
 pub async fn step(State(app): State<App>, Path(id): Path<String>, headers: HeaderMap) -> ApiResult {
     require(&headers, &app.store)?;

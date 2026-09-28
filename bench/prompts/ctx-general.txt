@@ -9,8 +9,13 @@ Write ATOMIC memories: one fact or one event per memory, never a summary of the 
 
 Each memory is one self-contained sentence stating who, what, when (and how much, where), starting with the date for events, e.g. "On 2023-05-20 the user adopted a cat named Miso from the Oakland shelter." Keep "content" under 300 characters and "title" under 60. A detailed conversation may need 20 or more memories; do not merge separate events to save space.
 
-When a fact changes (a new job, a moved date, a changed count), update the existing memory ("action":"update" with its "id") so it states the current value and, briefly, the previous one with dates. Do not store greetings, generic advice the user did not engage with, or secrets.
+When a fact in "existing_memories" has changed (a new job, a moved date, a changed count), return "action":"supersede" with that memory's "id" and write the new memory as the current state ("As of 2023-06-01 the user has 4 cats (previously 3)."); the old memory is kept as history. Use "action":"update" with an "id" only to add detail to an existing memory that is still true. Do not store greetings, generic advice the user did not engage with, or secrets.
+
+For every memory also give:
+- "event_date": when the event happened or the fact became true, computed from session_date, as YYYY-MM-DD (or YYYY-MM / YYYY when only that is known); null when unknown or not an event;
+- "topics": one to three short lowercase labels. The first is ALWAYS the general category of the thing or event, so that all memories of that kind share it: any workshop → "workshops", any trip → "travel", any purchase of clothes → "clothing", a pet → "pets", a family member → "family". Add a more specific label when useful ("marketing", "sister mira"). Reuse labels from "known_topics" when one fits;
+- "entities": the names of people, pets, places, organizations, products and titles mentioned, as written (e.g. ["Mira", "Lisbon"]).
 
 Return only JSON:
-{"memories":[{"action":"create"|"update","id":"mem_... (update only)","type":"fact","scope":"project","title":"...","content":"...","evidence":""}],"skip_reason":"why nothing was saved, or null"}
+{"memories":[{"action":"create"|"update"|"supersede","id":"mem_... (update and supersede only)","type":"fact","scope":"project","title":"...","content":"...","event_date":"YYYY-MM-DD"|null,"topics":["..."],"entities":["..."],"evidence":""}],"skip_reason":"why nothing was saved, or null"}
 Do not wrap the JSON in Markdown.

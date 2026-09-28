@@ -107,6 +107,18 @@ class CtxService:
         return f"http://127.0.0.1:{self.port}/api/v1"
 
 
+def render(hit):
+    """One retrieved item as the answer model sees it: when it was said, the content, when
+    the event happened, and earlier values of a fact that changed."""
+    text = f"[{hit.get('observed_at') or hit.get('created_at') or ''}] {hit['content']}"
+    if hit.get("event_at"):
+        text += f" (event date: {hit['event_at']})"
+    history = hit.get("history") or []
+    if history:
+        text += " (previously: " + "; ".join(f"[{h['date']}] {h['content']}" for h in history) + ")"
+    return text
+
+
 def namespace(ns):
     return re.sub(r"[^a-z0-9_.-]", "-", ns.lower())
 
@@ -114,10 +126,11 @@ def namespace(ns):
 class Ctx(MemorySystem):
     """ctx with its built-in extraction prompt (tuned for coding work), or a variant prompt."""
 
-    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None):
+    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False):
         self.name = name
         self.mode = mode
         self.episodes = episodes
+        self.deep = deep  # plan sub-queries and a date window (one model call per search)
         # Reuse another variant's memory store (same memories, no new extraction) and only
         # build the conversation excerpts; ingestion then does nothing.
         self.reuse_from = reuse_from
@@ -156,11 +169,13 @@ class Ctx(MemorySystem):
     def search(self, ns, query, project=None, limit=20):
         return [text for text, _ in self.search_scored(ns, query, project, limit)]
 
-    def search_scored(self, ns, query, project=None, limit=20):
-        params = urllib.parse.urlencode({"q": query, "project": namespace(project or ns), "limit": min(limit, 50),
-                                           "mode": self.mode, "episodes": self.episodes})
-        hits = self.service.request(f"/api/v1/recall?{params}")
-        return [(f"[{(h.get('observed_at') or h.get('created_at') or '')}] {h['content']}", h["score"]) for h in hits]
+    def search_scored(self, ns, query, project=None, limit=20, now=None):
+        args = {"q": query, "project": namespace(project or ns), "limit": min(limit, 50), "mode": self.mode,
+                "episodes": self.episodes, "deep": str(self.deep).lower()}
+        if now:
+            args["now"] = now
+        hits = self.service.request(f"/api/v1/recall?{urllib.parse.urlencode(args)}")
+        return [(render(h), h["score"]) for h in hits]
 
     def usage(self):
         stats = self.service.request("/api/v1/stats")
