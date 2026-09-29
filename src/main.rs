@@ -528,6 +528,8 @@ async fn main() -> Result<()> {
             println!("embedded {count} memories with {}", model.name);
             let excerpts = extract::backfill_episodes(&store)?;
             println!("added {excerpts} conversation excerpts");
+            let digests = extract::rebuild_digests(&store)?;
+            println!("rewrote {digests} topic digests");
         }
         Command::Sessions => print_json(&json!(Store::open(&root)?.sessions(50)?))?,
         Command::Extract { session } => {

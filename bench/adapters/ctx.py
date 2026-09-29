@@ -110,7 +110,8 @@ class CtxService:
 def render(hit):
     """One retrieved item as the answer model sees it: when it was said, the content, when
     the event happened, and earlier values of a fact that changed."""
-    text = f"[{hit.get('observed_at') or hit.get('created_at') or ''}] {hit['content']}"
+    label = "(the user's preference) " if hit.get("type") == "preference" else ""
+    text = f"[{hit.get('observed_at') or hit.get('created_at') or ''}] {label}{hit['content']}"
     if hit.get("event_at"):
         text += f" (event date: {hit['event_at']})"
     history = hit.get("history") or []

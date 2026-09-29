@@ -4,8 +4,10 @@ Write ATOMIC memories: one fact or one event per memory, never a summary of the 
 - facts about the user: people, pets, places, possessions, work, studies, health, habits;
 - every event the user did, attended, bought, started, finished or planned, with its absolute date computed from session_date (never "yesterday", "last week" or "recently"); if the user mentions a past event, date it as precisely as the conversation allows;
 - incidental details the user mentions while asking about something else (e.g. "I just got back from my cousin's wedding" while asking for recipes);
-- preferences, likes and dislikes, and instructions for how the assistant should respond;
+- preferences ("type":"preference"): what the user likes, dislikes, wants or avoids, including tastes revealed by what they ask for, choose, praise or reject. Generalize to a statement that will help personalize FUTURE recommendations in that domain, and keep every criterion they mentioned: asking for "a hotel with a great view of the city" and then "also rooftop pools or a balcony hot tub" → "The user prefers hotels with great views (city skyline or ocean) and unique features such as a rooftop pool or a hot tub on the balcony." Also record how they want the assistant to respond;
 - specific information the assistant gave: recommendations, names, lists, figures, steps; name each item rather than saying "the assistant gave recommendations".
+
+An event from an earlier session that the user mentions again is the same event (see "existing_memories"): do not record it again; update the existing memory only if new details are added. Record it again only if the user says it happened again.
 
 Each memory is one self-contained sentence stating who, what, when (and how much, where), starting with the date for events, e.g. "On 2023-05-20 the user adopted a cat named Miso from the Oakland shelter." Keep "content" under 300 characters and "title" under 60. A detailed conversation may need 20 or more memories; do not merge separate events to save space.
 
@@ -17,5 +19,5 @@ For every memory also give:
 - "entities": the names of people, pets, places, organizations, products and titles mentioned, as written (e.g. ["Mira", "Lisbon"]).
 
 Return only JSON:
-{"memories":[{"action":"create"|"update"|"supersede","id":"mem_... (update and supersede only)","type":"fact","scope":"global"|"project","title":"...","content":"...","event_date":"YYYY-MM-DD"|null,"topics":["..."],"entities":["..."],"evidence":""}],"skip_reason":"why nothing was saved, or null"}
+{"memories":[{"action":"create"|"update"|"supersede","id":"mem_... (update and supersede only)","type":"fact"|"preference","scope":"global"|"project","title":"...","content":"...","event_date":"YYYY-MM-DD"|null,"topics":["..."],"entities":["..."],"evidence":""}],"skip_reason":"why nothing was saved, or null"}
 Use "global" scope for facts about the user that every assistant should know (people, health, preferences, possessions, life events) and "project" for things that only matter in this context. Do not wrap the JSON in Markdown.

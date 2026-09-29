@@ -246,7 +246,9 @@ class CtxMemoryProvider(MemoryProvider):
         lines = []
         for hit in hits:
             date = (hit.get("observed_at") or hit.get("created_at") or "")[:10]
-            lines.append(f"- [{date}] {hit.get('content', '').strip()}" if date else f"- {hit.get('content', '').strip()}")
+            label = "(user preference) " if hit.get("type") == "preference" else ""
+            text = f"{label}{hit.get('content', '').strip()}"
+            lines.append(f"- [{date}] {text}" if date else f"- {text}")
         return "## Long-term memory (ctx)\n" + "\n".join(lines) if lines else ""
 
     def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "",

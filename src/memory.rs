@@ -10,7 +10,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fs, path::Path};
 
-pub const TYPES: [&str; 6] = ["rule", "fact", "lesson", "skill", "intent", "digest"];
+pub const TYPES: [&str; 7] = [
+    "rule",
+    "fact",
+    "preference",
+    "lesson",
+    "skill",
+    "intent",
+    "digest",
+];
 pub const TRIGGER_KINDS: [&str; 4] = ["keyword", "error", "tool", "file"];
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

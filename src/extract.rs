@@ -15,7 +15,7 @@ use anyhow::Result;
 use chrono::Utc;
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 const PROMPT: &str = include_str!("../prompts/extract-v1.txt");
 /// For personal assistants: atomic facts and events about the user, validated on
@@ -207,6 +207,17 @@ pub async fn run_due(store: &Store) -> Result<Value> {
 
 /// Build conversation excerpts for every recorded session (sessions from before the
 /// episodic tier, or after a model change). Excerpts that already exist are kept once.
+/// Rebuild every topic digest (after a change to how digests are built).
+pub fn rebuild_digests(store: &Store) -> Result<usize> {
+    let ids: Vec<String> = store
+        .memories()
+        .into_iter()
+        .filter(|m| m.recallable() && m.kind != "digest" && !m.topics.is_empty())
+        .map(|m| m.id)
+        .collect();
+    Ok(refresh_digests(store, ids.iter())?.len())
+}
+
 pub fn backfill_episodes(store: &Store) -> Result<usize> {
     let sessions = store.sessions(usize::MAX)?;
     let workers = store.config.embedding.workers.max(1);
@@ -246,27 +257,32 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
         return Ok(json!({"session":session.key,"skipped":"no user messages"}));
     }
     let project = session.project.as_deref();
-    let related_query: String = transcript
-        .user_texts
-        .join("\n")
-        .chars()
-        .take(2000)
-        .collect();
-    // Search mode (not the strict injection cutoff): a fact that changed must be shown
-    // to the model so it can supersede it.
-    let related = recall::recall(
-        store,
-        &Query {
-            text: Some(&related_query),
-            project,
-            limit: 15,
-            mode: recall::Mode::Search,
-            ..Default::default()
-        },
-    )?;
+    // Existing memories related to each user message (search mode, not the strict
+    // injection cutoff): the model must see a fact that changed to supersede it, and an
+    // event that is mentioned again to avoid recording it twice.
+    let mut related: HashMap<String, recall::Hit> = HashMap::new();
+    for text in transcript.user_texts.iter().take(12) {
+        let text: String = text.chars().take(1000).collect();
+        for hit in recall::recall(
+            store,
+            &Query {
+                text: Some(&text),
+                project,
+                limit: 6,
+                mode: recall::Mode::Search,
+                ..Default::default()
+            },
+        )? {
+            if hit.memory.kind != "digest" && related.get(&hit.memory.id).is_none_or(|h| h.score < hit.score) {
+                related.insert(hit.memory.id.clone(), hit);
+            }
+        }
+    }
+    let mut related: Vec<recall::Hit> = related.into_values().collect();
+    related.sort_by(|a, b| b.score.total_cmp(&a.score).then_with(|| a.memory.id.cmp(&b.memory.id)));
+    related.truncate(30);
     let existing: Vec<Value> = related
         .iter()
-        .filter(|h| h.memory.kind != "digest")
         .map(|h| json!({"id":h.memory.id,"type":h.memory.kind,"scope":h.memory.scope,"title":h.memory.title,"content":h.memory.body.chars().take(400).collect::<String>(),"event_date":h.memory.event_at,"topics":h.memory.topics}))
         .collect();
     let known_topics: Vec<String> = {
@@ -366,7 +382,7 @@ fn apply(
     let embedder = store.embedder.get();
     for proposal in proposals.into_iter().take(MAX_PROPOSALS) {
         let content = redact(proposal.content.trim());
-        if !["fact", "lesson", "skill", "rule"].contains(&proposal.kind.as_str())
+        if !["fact", "preference", "lesson", "skill", "rule"].contains(&proposal.kind.as_str())
             || content.chars().count() < 10
             || content.len() > 4000
         {
@@ -449,8 +465,14 @@ fn apply(
             _ => None,
         };
         if replaced.is_none()
-            && let Some(duplicate) =
-                near_duplicate(store, embedder.as_deref(), &scope, &title, &content)?
+            && let Some(duplicate) = near_duplicate(
+                store,
+                embedder.as_deref(),
+                &scope,
+                &title,
+                &content,
+                event_at.as_deref(),
+            )?
         {
             skipped.push(format!("duplicate of {duplicate}"));
             continue;
@@ -545,7 +567,13 @@ fn grounded_triggers(proposed: &[ProposedTrigger], transcript: &str) -> Vec<memo
 
 /// Topics with at least this many memories get a digest.
 const DIGEST_MIN_MEMBERS: usize = 3;
-const DIGEST_MAX_MEMBERS: usize = 40;
+/// A digest lists every member (the whole topic is its point) within a character budget,
+/// about 800 tokens, so it cannot crowd everything else out of a retrieval budget: lines
+/// get shorter as the topic grows, and only past the minimum line length are the oldest
+/// members left out.
+const TOPIC_DIGEST_CHARS: usize = 3200;
+const DIGEST_LINE_MIN: usize = 90;
+const DIGEST_LINE_MAX: usize = 200;
 
 /// Rebuild the digest of every topic touched by these memories: one memory listing all
 /// active memories of the topic (in that scope) in chronological order, so a question
@@ -577,13 +605,22 @@ pub fn refresh_digests<'a>(
         }
         let digits = |m: &Memory| -> String { digest_date(m).chars().filter(char::is_ascii_digit).collect() };
         members.sort_by_key(|m| (digits(m), m.created_at.clone()));
-        members.truncate(DIGEST_MAX_MEMBERS);
-        let mut body = format!(
-            "Overview of \"{topic}\" ({} memories, oldest first):",
-            members.len()
-        );
-        for m in &members {
-            let text: String = m.body.chars().take(300).collect();
+        let total = members.len();
+        let members = &members[total.saturating_sub(TOPIC_DIGEST_CHARS / DIGEST_LINE_MIN)..];
+        let line_chars = (TOPIC_DIGEST_CHARS / members.len()).clamp(DIGEST_LINE_MIN, DIGEST_LINE_MAX);
+        let mut body = if total > members.len() {
+            format!(
+                "Overview of \"{topic}\" (latest {} of {total} memories, oldest first):",
+                members.len()
+            )
+        } else {
+            format!("Overview of \"{topic}\" ({total} memories, oldest first):")
+        };
+        for m in members {
+            let mut text: String = m.body.chars().take(line_chars).collect();
+            if m.body.chars().count() > line_chars {
+                text.push('…');
+            }
             body.push_str(&format!("\n- [{}] {}", digest_date(m), text.trim()));
         }
         let evidence: Vec<String> = members.iter().map(|m| m.id.clone()).collect();
@@ -671,12 +708,18 @@ fn numbers(text: &str) -> Vec<String> {
         .collect()
 }
 
+/// An event restated in a later session gets a date computed from a different anchor
+/// ("last Saturday"): nearly identical memories dated up to this many days apart are one event.
+const SAME_EVENT_DAYS: i64 = 7;
+const SAME_EVENT_SIMILARITY: f32 = 0.92;
+
 fn near_duplicate(
     store: &Store,
     embedder: Option<&embed::Embedder>,
     scope: &str,
     title: &str,
     content: &str,
+    event_at: Option<&str>,
 ) -> Result<Option<String>> {
     let vector = match embedder {
         Some(embedder) => Some(
@@ -687,26 +730,75 @@ fn near_duplicate(
         None => None,
     };
     let target = normalize(content);
-    let target_numbers = numbers(content);
+    let target_numbers = numbers(&strip_dates(content));
     Ok(store.with_index(|index, all| {
         all.values()
             .filter(|m: &&Memory| m.recallable() && m.scope == scope && m.kind != "digest")
             .find(|m| {
-                normalize(&m.body) == target
-                    // "3 cats" and "4 cats" embed almost identically but are different facts.
-                    || numbers(&m.body) == target_numbers && vector.as_ref().is_some_and(|v| {
-                        index
-                            .vector(&m.id)
-                            .is_some_and(|other| embed::dot(v, other) >= DUPLICATE_SIMILARITY)
-                    })
+                if normalize(&m.body) == target {
+                    return true;
+                }
+                // "3 cats" and "4 cats" embed almost identically but are different facts;
+                // dates are compared separately below.
+                if numbers(&strip_dates(&m.body)) != target_numbers {
+                    return false;
+                }
+                let threshold = match day_gap(m.event_at.as_deref(), event_at) {
+                    Some(0) | None => DUPLICATE_SIMILARITY,
+                    Some(days) if days <= SAME_EVENT_DAYS => SAME_EVENT_SIMILARITY,
+                    Some(_) => return false,
+                };
+                vector.as_ref().is_some_and(|v| {
+                    index.vector(&m.id).is_some_and(|other| embed::dot(v, other) >= threshold)
+                })
             })
             .map(|m| m.id.clone())
     }))
 }
 
+/// Days between two (possibly partial) event dates, when both are known.
+fn day_gap(a: Option<&str>, b: Option<&str>) -> Option<i64> {
+    let day = |d: &str| {
+        let (start, _) = recall::date_range(d)?;
+        chrono::NaiveDate::from_ymd_opt((start / 10000) as i32, start / 100 % 100, (start % 100).max(1))
+    };
+    Some((day(a?)? - day(b?)?).num_days().abs())
+}
+
+/// The text without ISO-style dates ("2023-05-20", "2023/05", "2023-05-20T10:00"), whose
+/// digits would otherwise make a restated event look like a different fact.
+fn strip_dates(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0;
+    let digits = |from: usize, n: usize| (from..from + n).all(|k| chars.get(k).is_some_and(char::is_ascii_digit));
+    while i < chars.len() {
+        if digits(i, 4) && matches!(chars.get(i + 4), Some('-' | '/')) && digits(i + 5, 2) {
+            let mut end = i + 7;
+            if matches!(chars.get(end), Some('-' | '/')) && digits(end + 1, 2) {
+                end += 3;
+            }
+            out.push(' ');
+            i = end;
+        } else {
+            out.push(chars[i]);
+            i += 1;
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn restated_events_are_not_told_apart_by_their_dates() {
+        assert_eq!(numbers(&strip_dates("On 2023-05-20 the user baked 2 baguettes")), ["2"]);
+        assert_eq!(strip_dates("2023/05/27 and 2023-05"), "  and  ");
+        assert_eq!(day_gap(Some("2023-05-20"), Some("2023-05-27")), Some(7));
+        assert_eq!(day_gap(Some("2023-05"), Some("2023-06-15")), Some(45));
+        assert_eq!(day_gap(None, Some("2023-05-27")), None);
+    }
     #[test]
     fn numbers_tell_updated_counts_apart() {
         assert_eq!(numbers("paid $1,200 on 2023-05-02"), ["1200", "2023", "05", "02"]);
@@ -932,6 +1024,41 @@ mod tests {
                 .any(|h| h.memory.kind == "digest")
         };
         assert!(search(recall::Mode::Search) && !search(recall::Mode::Inject));
+    }
+
+    #[test]
+    fn large_topics_keep_every_member_within_the_digest_budget() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::store::init(dir.path()).unwrap();
+        let mut config = crate::store::load_config(dir.path()).unwrap();
+        config.embedding.enabled = false;
+        crate::store::Store::save_config(dir.path(), &config).unwrap();
+        let store = Store::open(dir.path()).unwrap();
+        let session = SessionRow {
+            key: "s".into(),
+            agent: "hermes".into(),
+            project: Some("home".into()),
+            started_at: String::new(),
+            last_seen: String::new(),
+            steps: 1,
+            user_turns: 1,
+            status: "open".into(),
+            extracted_at: None,
+            error: None,
+            observed_at: Some("2023/05/30".into()),
+        };
+        let item = |i: usize| Proposal {
+            kind: "fact".into(),
+            scope: "project".into(),
+            content: format!("On 2023-04-{:02} the user bought jewelry item number {i}. {}", i % 28 + 1, "Details. ".repeat(30)),
+            event_date: Some(format!("2023-04-{:02}", i % 28 + 1)),
+            topics: vec!["jewelry".into()],
+            ..Default::default()
+        };
+        let (ids, _, _) = apply(&store, &session, (0..25).map(item).collect(), &[], "").unwrap();
+        let digest = store.memory(&refresh_digests(&store, ids.iter()).unwrap()[0]).unwrap();
+        assert_eq!(digest.body.lines().count(), 26, "every member listed");
+        assert!(digest.body.chars().count() < TOPIC_DIGEST_CHARS + 25 * 30, "{}", digest.body.len());
     }
 
     #[test]

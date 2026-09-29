@@ -28,14 +28,12 @@ from evaluate_qa_official import get_anscheck_prompt  # noqa: E402
 
 TYPES = ["single-session-user", "single-session-assistant", "single-session-preference",
          "multi-session", "knowledge-update", "temporal-reasoning"]
-ANSWER_PROMPT = """Below are memories retrieved from earlier conversations with the user. They may be incomplete or irrelevant.
-
-{memories}
-
-Current date: {date}
-Question: {question}
-
-Answer the question using the memories. If they do not contain the information needed, say that you don't know. Be concise; for questions about time, reason with the dates given."""
+# The official LongMemEval reading prompt (retrieval, chain of thought), verbatim from
+# src/generation/run_generation.py; every system's retrieved items fill the history block.
+ANSWER_PROMPT = ("I will give you several history chats between you and a user. Please answer the question based on the "
+                 "relevant chat history. Answer the question step by step: first extract all the relevant information, "
+                 "and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n{memories}\n\n"
+                 "Current Date: {date}\nQuestion: {question}\nAnswer (step by step):")
 
 
 def sample(data, n, seed=20260928):
@@ -117,6 +115,12 @@ def make_system(name, workdir, embed):
         from adapters.ctx import Ctx
         return Ctx(workdir / "ctx-v05-deep-home", name="ctx-v05-deep", prompt_file=BENCH / "prompts/ctx-general.txt",
                    episodes=5, deep=True, reuse_from=workdir / "ctx-v05-home")
+    if name == "ctx-v05-reanswer":
+        # Answer again from an existing ctx-v05 store (no new extraction): rebuilds digests
+        # and re-runs retrieval and answering, e.g. after a change to the reading side.
+        from adapters.ctx import Ctx
+        return Ctx(workdir / "ctx-v05-reanswer-home", name="ctx-v05-reanswer", prompt_file=BENCH / "prompts/ctx-general.txt",
+                   episodes=5, reuse_from=workdir / "ctx-v05-home")
     if name == "mem0":
         from adapters.mem0_adapter import Mem0
         return Mem0(workdir / "mem0", embed)
