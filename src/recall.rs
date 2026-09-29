@@ -68,11 +68,20 @@ pub struct Intent {
     pub aggregate: bool,
     /// "most recently", "first", "how long ago": dated events in order help.
     pub temporal: bool,
+    /// "you recommended", "our previous chat", "remind me": the answer is a detail of the
+    /// original conversation, so its excerpts matter most.
+    pub conversation: bool,
 }
 
 const AGGREGATE_CUES: &[&str] = &[
     "how many", "how much", "in total", "total", "number of", "count", "list", "all the", "all of the",
     "which ones", "多少", "几次", "几个", "几种", "总共", "一共", "总计", "哪些", "所有",
+];
+const CONVERSATION_CUES: &[&str] = &[
+    "our previous", "previous chat", "previous conversation", "our conversation", "our last chat",
+    "last time we", "you told me", "you said", "you mentioned", "you recommended", "you suggested",
+    "you provided", "you wrote", "you gave", "you listed", "you shared", "remind me", "we discussed",
+    "we talked", "我们之前", "之前聊", "上次你", "你说过", "你提到", "你推荐", "你建议", "你给我", "提醒我",
 ];
 const TEMPORAL_CUES: &[&str] = &[
     "first", "firstly", "most recent", "most recently", "recently", "latest", "last time", "earliest", "before", "after", "how long", "ago",
@@ -93,7 +102,11 @@ pub fn intent(text: &str) -> Intent {
             })
         })
     };
-    Intent { aggregate: has(AGGREGATE_CUES), temporal: has(TEMPORAL_CUES) }
+    Intent {
+        aggregate: has(AGGREGATE_CUES),
+        temporal: has(TEMPORAL_CUES),
+        conversation: has(CONVERSATION_CUES),
+    }
 }
 
 /// Score added to topic digests for aggregate questions.
@@ -192,7 +205,7 @@ fn episode_hits(
             0.0,
         );
         // Spare candidates: excerpts of the same turn are dropped below.
-        scored.truncate(limit * 3);
+        scored.truncate(limit * 6);
         scored
             .into_iter()
             .map(|(id, score, reason)| {
@@ -204,7 +217,11 @@ fn episode_hits(
             .collect::<Vec<_>>()
     });
     let mut hits = vec![];
-    let mut turns = HashSet::new();
+    // Questions about an earlier conversation may need a later part of a long reply: allow
+    // several excerpts of one turn and look at more of them.
+    let conversation = intent(text).conversation;
+    let (limit, per_turn) = if conversation { (limit * 2, 3) } else { (limit, 1) };
+    let mut turns: HashMap<(String, String), usize> = HashMap::new();
     for (id, score, reason, observed_at, session) in scored {
         if hits.len() == limit {
             break;
@@ -212,9 +229,11 @@ fn episode_hits(
         if let Some(text) = store.episode_text(&id)? {
             // A long turn is split into several excerpts that all start with the user's
             // message; returning more than one repeats the same statement.
-            if !turns.insert((session, crate::episode::turn_key(&text))) {
+            let seen = turns.entry((session, crate::episode::turn_key(&text))).or_insert(0);
+            if *seen >= per_turn {
                 continue;
             }
+            *seen += 1;
             hits.push(Hit {
                 memory: Memory::episode(&id, project, text, observed_at),
                 channel: "episode",
@@ -251,6 +270,9 @@ fn hit_tokens(hit: &Hit) -> usize {
 pub fn pack(hits: Vec<Hit>, question: &str, budget: usize) -> Vec<Hit> {
     let intent = intent(question);
     let (mut memories, excerpts): (Vec<Hit>, Vec<Hit>) = hits.into_iter().partition(|h| h.channel != "episode");
+    if intent.conversation {
+        return pack_conversation(memories, excerpts, question, budget);
+    }
     let excerpts: Vec<Hit> = excerpts
         .into_iter()
         .map(|mut h| {
@@ -292,6 +314,34 @@ pub fn pack(hits: Vec<Hit>, question: &str, budget: usize) -> Vec<Hit> {
         kept_memories[rules..].sort_by_key(|h| date_key(&h.memory));
     }
     kept_memories.extend(kept_excerpts);
+    kept_memories
+}
+
+/// Packing for questions about an earlier conversation ("what did you recommend..."):
+/// the answer is a detail of the original text, so excerpts come first and whole (cut to
+/// the relevant window only when a whole one no longer fits), memories fill the rest.
+fn pack_conversation(memories: Vec<Hit>, excerpts: Vec<Hit>, question: &str, budget: usize) -> Vec<Hit> {
+    let mut used = 0;
+    let mut kept = vec![];
+    for mut hit in excerpts {
+        if used + hit_tokens(&hit) > budget {
+            hit.memory.body = trim_excerpt(&hit.memory.body, question);
+        }
+        let cost = hit_tokens(&hit);
+        if used + cost <= budget {
+            used += cost;
+            kept.push(hit);
+        }
+    }
+    let mut kept_memories = vec![];
+    for hit in memories {
+        let cost = hit_tokens(&hit);
+        if hit.channel == "rule" || used + cost <= budget {
+            used += cost;
+            kept_memories.push(hit);
+        }
+    }
+    kept_memories.extend(kept);
     kept_memories
 }
 
@@ -830,9 +880,11 @@ mod tests {
 
     #[test]
     fn intent_from_wording() {
-        assert_eq!(intent("How many times did I bake last month?"), Intent { aggregate: true, temporal: false });
-        assert_eq!(intent("Which streaming service did I start using most recently?"), Intent { aggregate: false, temporal: true });
-        assert_eq!(intent("我一共去过几次杭州？最近一次是哪天？"), Intent { aggregate: true, temporal: true });
+        assert_eq!(intent("How many times did I bake last month?"), Intent { aggregate: true, ..Default::default() });
+        assert_eq!(intent("Which streaming service did I start using most recently?"), Intent { temporal: true, ..Default::default() });
+        assert_eq!(intent("我一共去过几次杭州？最近一次是哪天？"), Intent { aggregate: true, temporal: true, ..Default::default() });
+        assert!(intent("What was the name of the hostel you recommended last time?").conversation);
+        assert!(intent("上次你推荐的那本书叫什么？").conversation);
         assert_eq!(intent("What's my sister's name?"), Intent::default());
         assert!(!intent("I'm counting on you").aggregate, "whole words only");
     }
@@ -859,6 +911,22 @@ mod tests {
         let trimmed = &packed[2].memory.body;
         assert!(trimmed.starts_with("[user] Tell me about my baking") && trimmed.contains("sourdough bread with rye"));
         assert!(trimmed.chars().count() < 700, "{}", trimmed.len());
+    }
+
+    #[test]
+    fn conversation_questions_keep_whole_excerpts_first() {
+        let hit = |id: &str, channel: &'static str, body: String| {
+            let mut memory = Memory::episode(id, Some("q"), body, None);
+            memory.kind = if channel == "episode" { "episode".into() } else { "fact".into() };
+            Hit { memory, channel, score: 0.5, reason: String::new(), group: None }
+        };
+        let reply = format!("[user] Write a script about Andy\n[assistant] {} Andy wore an untidy, stained white shirt. {}", "Scene one. ".repeat(40), "The end. ".repeat(20));
+        let hits = vec![hit("mem_a", "search", "The user writes scripts.".into()), hit("ep_1", "episode", reply.clone())];
+        let packed = pack(hits.clone(), "What was Andy wearing in the script you wrote for me?", 1000);
+        assert_eq!(packed.iter().map(|h| h.memory.id.as_str()).collect::<Vec<_>>(), ["mem_a", "ep_1"]);
+        assert_eq!(packed[1].memory.body, reply, "whole excerpt kept");
+        let other = pack(hits, "What was Andy wearing?", 1000);
+        assert!(other[1].memory.body.len() < reply.len(), "other questions keep the trimmed window");
     }
 
     #[test]
