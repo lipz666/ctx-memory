@@ -1,0 +1,12 @@
+# Benchmark harness (Python 3.12). Install with: python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt
+numpy
+openai
+tqdm
+backoff
+psutil
+pyarrow        # BEAM parquet files
+huggingface_hub  # dataset download
+
+# Only for Mem0 comparisons (tracks with --systems mem0):
+# mem0ai[nlp]==2.2.1
+# fastembed
