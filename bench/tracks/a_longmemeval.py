@@ -85,6 +85,14 @@ def subset(questions, n, seed=20260929):
 
 def make_system(name, workdir, embed):
     from adapters import baselines
+    if name.startswith("ctx-budget-"):
+        # ctx-budget-<N>[-noep]: the dev store read with a packing budget of N tokens (run with
+        # --budget N so the harness applies the same limit); -noep leaves excerpts out.
+        from adapters.ctx import Ctx
+        parts = name.split("-")
+        budget, excerpts = int(parts[2]), 0 if name.endswith("-noep") else 5
+        return Ctx(workdir / f"{name}-home", name=name, prompt_file=BENCH / "prompts/ctx-general.txt",
+                   episodes=excerpts, budget=budget, reuse_from=workdir / "ctx-v05-home")
     if name == "ctx":
         from adapters.ctx import Ctx
         return Ctx(workdir / "ctx-home", name="ctx", mode="inject")
