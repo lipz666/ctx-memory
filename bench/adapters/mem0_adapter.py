@@ -36,16 +36,21 @@ def share_bm25_encoder():
 class Mem0(MemorySystem):
     name = "mem0"
 
-    def __init__(self, workdir, embed_service: CtxService):
+    def __init__(self, workdir, embed_service: CtxService, reuse=False):
         self.workdir = Path(workdir)
         self.embed = embed_service
         self.instances = {}
         self.lock = threading.Lock()
+        # reuse: answer from the stores an earlier run built (no ingestion).
+        self.reuse = reuse
+        self.tokens = {"calls": 0, "input_tokens": 0, "output_tokens": 0}
+        self.failed_sessions = []
 
     def setup(self):
-        if self.workdir.exists():
-            shutil.rmtree(self.workdir)
-        self.workdir.mkdir(parents=True)
+        if not self.reuse:
+            if self.workdir.exists():
+                shutil.rmtree(self.workdir)
+            self.workdir.mkdir(parents=True)
         os.environ.setdefault("MEM0_TELEMETRY", "False")
         share_bm25_encoder()
 
@@ -68,11 +73,30 @@ class Mem0(MemorySystem):
             "history_db_path": str(path / "history.db"),
         }
         memory = Memory.from_config(config)
+        self._count_tokens(memory)
         with self.lock:
             self.instances.setdefault(ns, memory)
             return self.instances[ns]
 
+    def _count_tokens(self, memory):
+        """Record the usage of every model call Mem0 makes (they bypass the harness client)."""
+        completions = memory.llm.client.chat.completions
+        create = completions.create
+
+        def counted(*args, **kwargs):
+            response = create(*args, **kwargs)
+            usage = getattr(response, "usage", None)
+            with self.lock:
+                self.tokens["calls"] += 1
+                self.tokens["input_tokens"] += getattr(usage, "prompt_tokens", 0) or 0
+                self.tokens["output_tokens"] += getattr(usage, "completion_tokens", 0) or 0
+            return response
+
+        completions.create = counted
+
     def ingest_session(self, ns, session_id, messages, timestamp, project=None):
+        if self.reuse:
+            return None
         memory = self._memory(project or ns)
         clean = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] in ("user", "assistant")]
         # Mem0 OSS has no timestamp parameter (platform only) and dates facts with today's
@@ -83,9 +107,13 @@ class Mem0(MemorySystem):
         for attempt in range(5):
             try:
                 return memory.add(clean, user_id="u", metadata={"session_date": timestamp, "session_id": session_id})
-            except Exception:  # noqa: BLE001 - retried after the gateway recovers, then surfaced
+            except Exception as error:  # noqa: BLE001 - retried after the gateway recovers
                 if attempt == 4:
-                    raise
+                    # As for ctx: a session whose extraction keeps failing is left out and
+                    # the next sessions are still ingested.
+                    with self.lock:
+                        self.failed_sessions.append(f"{ns}:{session_id}: {type(error).__name__}: {error}"[:300])
+                    return None
                 wait_for_gateway()
 
     def add_memory(self, ns, text, project=None):
@@ -110,4 +138,6 @@ class Mem0(MemorySystem):
                 pass
 
     def usage(self):
-        return {"namespaces": len(self.instances)}
+        return {"namespaces": len(self.instances), "engine_llm_calls": self.tokens["calls"],
+                "engine_input_tokens": self.tokens["input_tokens"], "engine_output_tokens": self.tokens["output_tokens"],
+                "failed_sessions": len(self.failed_sessions)}

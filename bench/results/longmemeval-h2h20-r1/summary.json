@@ -1,0 +1,81 @@
+{
+  "summaries": [
+    {
+      "system": "ctx-v06-reanswer",
+      "questions": 20,
+      "accuracy": 1.0,
+      "by_type": {
+        "abstention": "1/1",
+        "knowledge-update": "3/3",
+        "multi-session": "5/5",
+        "single-session-assistant": "2/2",
+        "single-session-preference": "1/1",
+        "single-session-user": "3/3",
+        "temporal-reasoning": "5/5"
+      },
+      "errors": 0,
+      "wall_seconds": 32,
+      "ingest_seconds_per_question_p50": 0.0,
+      "search_ms_p50": 457.1,
+      "search_ms_p95": 661.2,
+      "kept_tokens_mean": 1607,
+      "usage": {
+        "memories": 3327,
+        "episodes": 13522,
+        "engine_llm_calls": 992,
+        "engine_input_tokens": 3592648,
+        "engine_output_tokens": 373037,
+        "engine_failed_calls": 5,
+        "extracted_sessions": 981,
+        "failed_sessions": 0,
+        "reader_judge": {
+          "calls": 40,
+          "input_tokens": 50271,
+          "output_tokens": 5353
+        }
+      },
+      "budget_tokens": 2000
+    },
+    {
+      "system": "mem0-reanswer",
+      "questions": 20,
+      "accuracy": 0.9,
+      "by_type": {
+        "abstention": "1/1",
+        "knowledge-update": "3/3",
+        "multi-session": "4/5",
+        "single-session-assistant": "2/2",
+        "single-session-preference": "1/1",
+        "single-session-user": "3/3",
+        "temporal-reasoning": "4/5"
+      },
+      "errors": 0,
+      "wall_seconds": 35,
+      "ingest_seconds_per_question_p50": 0.0,
+      "search_ms_p50": 3474.2,
+      "search_ms_p95": 4155.5,
+      "kept_tokens_mean": 1016,
+      "usage": {
+        "namespaces": 0,
+        "engine_llm_calls": 0,
+        "engine_input_tokens": 0,
+        "engine_output_tokens": 0,
+        "failed_sessions": 0,
+        "reader_judge": {
+          "calls": 40,
+          "input_tokens": 33824,
+          "output_tokens": 5173
+        }
+      },
+      "budget_tokens": 2000
+    }
+  ],
+  "llm": {
+    "calls": 80,
+    "cached": 0,
+    "retries": 0,
+    "failures": 0,
+    "input_tokens": 84095,
+    "output_tokens": 10526
+  }
+}

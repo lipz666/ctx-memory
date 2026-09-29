@@ -1,0 +1,36 @@
+{
+  "system": "ctx-v06",
+  "questions": 20,
+  "accuracy": 1.0,
+  "by_type": {
+    "abstention": "1/1",
+    "knowledge-update": "3/3",
+    "multi-session": "5/5",
+    "single-session-assistant": "2/2",
+    "single-session-preference": "1/1",
+    "single-session-user": "3/3",
+    "temporal-reasoning": "5/5"
+  },
+  "errors": 0,
+  "wall_seconds": 2302,
+  "ingest_seconds_per_question_p50": 2167.6,
+  "search_ms_p50": 125.5,
+  "search_ms_p95": 1739.4,
+  "kept_tokens_mean": 1607,
+  "usage": {
+    "memories": 3327,
+    "episodes": 13522,
+    "engine_llm_calls": 992,
+    "engine_input_tokens": 3592648,
+    "engine_output_tokens": 373037,
+    "engine_failed_calls": 5,
+    "extracted_sessions": 981,
+    "failed_sessions": 0,
+    "reader_judge": {
+      "calls": 40,
+      "input_tokens": 50219,
+      "output_tokens": 5301
+    }
+  },
+  "budget_tokens": 2000
+}

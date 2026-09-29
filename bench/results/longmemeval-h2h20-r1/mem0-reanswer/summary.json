@@ -1,0 +1,33 @@
+{
+  "system": "mem0-reanswer",
+  "questions": 20,
+  "accuracy": 0.9,
+  "by_type": {
+    "abstention": "1/1",
+    "knowledge-update": "3/3",
+    "multi-session": "4/5",
+    "single-session-assistant": "2/2",
+    "single-session-preference": "1/1",
+    "single-session-user": "3/3",
+    "temporal-reasoning": "4/5"
+  },
+  "errors": 0,
+  "wall_seconds": 35,
+  "ingest_seconds_per_question_p50": 0.0,
+  "search_ms_p50": 3474.2,
+  "search_ms_p95": 4155.5,
+  "kept_tokens_mean": 1016,
+  "usage": {
+    "namespaces": 0,
+    "engine_llm_calls": 0,
+    "engine_input_tokens": 0,
+    "engine_output_tokens": 0,
+    "failed_sessions": 0,
+    "reader_judge": {
+      "calls": 40,
+      "input_tokens": 33824,
+      "output_tokens": 5173
+    }
+  },
+  "budget_tokens": 2000
+}

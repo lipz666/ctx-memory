@@ -1,0 +1,39 @@
+{
+  "summaries": [
+    {
+      "system": "mem0",
+      "questions": 1,
+      "accuracy": 1.0,
+      "by_type": {
+        "multi-session": "1/1"
+      },
+      "errors": 0,
+      "wall_seconds": 849,
+      "ingest_seconds_per_question_p50": 836.8,
+      "search_ms_p50": 88.0,
+      "search_ms_p95": 88.0,
+      "kept_tokens_mean": 881,
+      "usage": {
+        "namespaces": 0,
+        "engine_llm_calls": 47,
+        "engine_input_tokens": 543732,
+        "engine_output_tokens": 14430,
+        "failed_sessions": 0,
+        "reader_judge": {
+          "calls": 2,
+          "input_tokens": 1578,
+          "output_tokens": 184
+        }
+      },
+      "budget_tokens": 2000
+    }
+  ],
+  "llm": {
+    "calls": 2,
+    "cached": 0,
+    "retries": 0,
+    "failures": 0,
+    "input_tokens": 1578,
+    "output_tokens": 184
+  }
+}

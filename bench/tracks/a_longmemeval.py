@@ -149,6 +149,9 @@ def make_system(name, workdir, embed):
     if name == "mem0":
         from adapters.mem0_adapter import Mem0
         return Mem0(workdir / "mem0", embed)
+    if name == "mem0-reanswer":
+        from adapters.mem0_adapter import Mem0
+        return Mem0(workdir / "mem0", embed, reuse=True)
     if name == "naive-rag":
         return baselines.NaiveRag(embed)
     if name == "full-context":
@@ -278,7 +281,7 @@ def main():
         (args.out / name / "rows.jsonl").unlink(missing_ok=True)
         # Only systems that need the shared embedder start it, so two ctx processes never
         # hold embedding models at the same time.
-        embed = CtxService(args.workdir / "embed-home", embed_workers=3).start() if name in ("naive-rag", "mem0") else None
+        embed = CtxService(args.workdir / "embed-home", embed_workers=3).start() if name in ("naive-rag", "mem0", "mem0-reanswer") else None
         try:
             summaries.append(run_system(name, questions, args.out, args.workdir, embed, args.budget, args.workers))
         finally:
