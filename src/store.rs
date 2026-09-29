@@ -705,6 +705,11 @@ impl Store {
             [],
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )?;
+        let (engine_input, engine_output, engine_failed): (i64, i64, i64) = db.query_row(
+            "SELECT COALESCE(SUM(input_tokens),0),COALESCE(SUM(output_tokens),0),COALESCE(SUM(outcome<>'received'),0) FROM llm_calls",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )?;
         let mismatch: i64 = db.query_row(
             "SELECT COUNT(*) FROM usage WHERE requested_model IS NOT NULL AND actual_model IS NOT NULL AND requested_model<>actual_model",
             [],
@@ -724,6 +729,7 @@ impl Store {
             "embedding_model": self.embedder.get().map(|e| e.name.clone()),
             "steps": steps, "injections": injections, "labeled_used": used, "missed_recalls": misses,
             "sessions": sessions, "extracted_sessions": extracted, "engine_llm_calls": engine_calls,
+            "engine_input_tokens": engine_input, "engine_output_tokens": engine_output, "engine_failed_calls": engine_failed,
             "input_tokens": input, "output_tokens": output, "cached_input_tokens": cached,
             "model_mismatch_steps": mismatch,
         }))

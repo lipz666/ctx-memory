@@ -53,6 +53,21 @@ def sample(data, n, seed=20260928):
     return sorted(chosen, key=lambda q: q["question_id"])
 
 
+def proportional(data, n, seed=20260929):
+    """n questions with the full set's mix of types (abstention counted separately), for
+    trial runs whose score and per-question cost extrapolate to all 500."""
+    rng = random.Random(seed)
+    groups = collections.defaultdict(list)
+    for q in data:
+        groups["abstention" if q["question_id"].endswith("_abs") else q["question_type"]].append(q)
+    shares = {k: len(v) * n / len(data) for k, v in groups.items()}
+    counts = {k: int(v) for k, v in shares.items()}
+    for k in sorted(shares, key=lambda k: shares[k] - counts[k], reverse=True)[: n - sum(counts.values())]:
+        counts[k] += 1
+    chosen = [q for k in sorted(groups) for q in rng.sample(sorted(groups[k], key=lambda q: q["question_id"]), counts[k])]
+    return sorted(chosen, key=lambda q: q["question_id"])
+
+
 def subset(questions, n, seed=20260929):
     """Half of the stratified sample: 9 abstention questions, 9 each of the three
     multi-step types and 8 of each single-session type (60 in total)."""
@@ -92,6 +107,16 @@ def make_system(name, workdir, embed):
         from adapters.ctx import Ctx
         return Ctx(workdir / "ctx-episodic-home", name="ctx-episodic", prompt_file=BENCH / "prompts/ctx-general.txt", episodes=5,
                    reuse_from=workdir / "ctx-atomic-home")
+    if name == "ctx-v05":
+        # ctx 0.5 as shipped for assistants: general extraction (atomic facts, event dates,
+        # versions, topics, entities), search mode with conversation excerpts.
+        from adapters.ctx import Ctx
+        return Ctx(workdir / "ctx-v05-home", name="ctx-v05", prompt_file=BENCH / "prompts/ctx-general.txt", episodes=5)
+    if name == "ctx-v05-deep":
+        # The same memory store, searched with the planner (sub-queries and date window).
+        from adapters.ctx import Ctx
+        return Ctx(workdir / "ctx-v05-deep-home", name="ctx-v05-deep", prompt_file=BENCH / "prompts/ctx-general.txt",
+                   episodes=5, deep=True, reuse_from=workdir / "ctx-v05-home")
     if name == "mem0":
         from adapters.mem0_adapter import Mem0
         return Mem0(workdir / "mem0", embed)
@@ -114,7 +139,8 @@ def ingest(system, question):
 
 def answer_and_grade(system, question, budget):
     started = time.time()
-    retrieved = system.search(question["question_id"], question["question"], limit=20)
+    extra = {"now": question["question_date"]} if getattr(system, "accepts_now", False) else {}
+    retrieved = system.search(question["question_id"], question["question"], limit=20, **extra)
     search_ms = (time.time() - started) * 1000
     kept = retrieved if system.unbounded else fit_budget(retrieved, budget)
     memories = "\n".join(f"- {item}" for item in kept) or "(no memories)"
@@ -139,6 +165,7 @@ def run_system(name, questions, out, workdir, embed, budget, workers):
     directory.mkdir(parents=True, exist_ok=True)
     system.setup()
     rows, started = [], time.time()
+    llm_before = dict(llm.STATS)
     try:
         def one(question):
             row = {"question_id": question["question_id"], "question_type": question["question_type"],
@@ -159,6 +186,7 @@ def run_system(name, questions, out, workdir, embed, budget, workers):
                     f.write(json.dumps(row, ensure_ascii=False) + "\n")
                 print(f"[{name}] {len(rows)}/{len(questions)} {row['question_id']} correct={row['correct']} {row.get('error', '')[:80]}", flush=True)
         usage = system.usage()
+        usage["reader_judge"] = {k: llm.STATS[k] - llm_before[k] for k in ("calls", "input_tokens", "output_tokens")}
     finally:
         system.teardown()
     by_type = collections.defaultdict(list)
@@ -185,6 +213,8 @@ def main():
     parser.add_argument("--workdir", type=Path, default=Path("/tmp/ctx-bench"))
     parser.add_argument("--budget", type=int, default=2000)
     parser.add_argument("--workers", type=int, default=250)
+    parser.add_argument("--proportional", action="store_true",
+                        help="sample --n questions with the full set's type mix (a fresh output directory)")
     parser.add_argument("--subset", type=int, default=0,
                         help="run on the stratified 60-question subset of the cached sample")
     args = parser.parse_args()
@@ -193,7 +223,7 @@ def main():
         questions = json.loads(cached.read_text())
     else:
         data = json.load(open(BENCH / "data/longmemeval_s_cleaned.json"))
-        questions = sample(data, args.n)
+        questions = proportional(data, args.n) if args.proportional else sample(data, args.n)
         del data
         gc.collect()
         args.out.mkdir(parents=True, exist_ok=True)

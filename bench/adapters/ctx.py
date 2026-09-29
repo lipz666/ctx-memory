@@ -166,8 +166,10 @@ class Ctx(MemorySystem):
     def add_memory(self, ns, text, project=None):
         self.service.request("/api/v1/memories", {"content": text, "type": "fact", "scope": namespace(project or ns)})
 
-    def search(self, ns, query, project=None, limit=20):
-        return [text for text, _ in self.search_scored(ns, query, project, limit)]
+    accepts_now = True  # the question date anchors relative dates in deep search
+
+    def search(self, ns, query, project=None, limit=20, now=None):
+        return [text for text, _ in self.search_scored(ns, query, project, limit, now=now)]
 
     def search_scored(self, ns, query, project=None, limit=20, now=None):
         args = {"q": query, "project": namespace(project or ns), "limit": min(limit, 50), "mode": self.mode,
@@ -179,4 +181,5 @@ class Ctx(MemorySystem):
 
     def usage(self):
         stats = self.service.request("/api/v1/stats")
-        return {k: stats[k] for k in ("memories", "engine_llm_calls", "extracted_sessions")}
+        return {k: stats.get(k) for k in ("memories", "episodes", "engine_llm_calls", "engine_input_tokens",
+                                           "engine_output_tokens", "engine_failed_calls", "extracted_sessions")}
