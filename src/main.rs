@@ -32,9 +32,13 @@ use std::{
 };
 use store::{Store, root_path};
 
+/// Package version and the git commit the binary was built from.
+pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (", env!("CTX_GIT_HASH"), ")");
+
 #[derive(Parser)]
 #[command(
     name = "ctx",
+    version = VERSION,
     about = "Local long-term memory and context engine for agents"
 )]
 struct Cli {
@@ -219,6 +223,7 @@ fn print_json(value: &Value) -> Result<()> {
 pub fn status_json(store: &Store) -> Result<Value> {
     let config = &store.config;
     Ok(json!({
+        "version": VERSION,
         "root": store.root.display().to_string(),
         "port": config.port,
         "agents": config.agents.keys().collect::<Vec<_>>(),

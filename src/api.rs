@@ -43,7 +43,7 @@ pub fn require(headers: &HeaderMap, store: &Store) -> Result<(), (StatusCode, St
 
 pub async fn health(State(app): State<App>, headers: HeaderMap) -> ApiResult {
     require(&headers, &app.store)?;
-    Ok(axum::Json(json!({"status":"ok"})))
+    Ok(axum::Json(json!({"status":"ok","version":crate::VERSION})))
 }
 
 #[derive(Deserialize)]

@@ -1,6 +1,6 @@
 [package]
 name = "ctx"
-version = "0.4.0-alpha.1"
+version = "0.5.0"
 edition = "2024"
 description = "Local context runtime for long-running agents"
 
