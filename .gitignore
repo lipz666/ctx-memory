@@ -22,3 +22,6 @@ bench/results/**/questions.json
 /HEARTBEAT.md
 /openclaw-workspace-state.json
 /memory/
+
+# BEAM dataset files (download with the plan in docs/beam-experiment-plan.md)
+bench/data/beam/*.parquet
