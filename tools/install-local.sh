@@ -8,7 +8,7 @@
 # binary, config, memory files and state database; swaps the binary atomically; restarts
 # the launchd service; checks that the daemon answers with the new commit, and rolls back
 # automatically if it does not; then backfills vectors and conversation excerpts
-# (`ctx reindex`). Every install is logged in $CTX_HOME/install-log.jsonl and the
+# (`ctx reindex`) and syncs installed copies of the Hermes plugin. Every install is logged in $CTX_HOME/install-log.jsonl and the
 # installed commit is tagged `installed` in this repository.
 #
 # CTX_HOME selects another instance (default ~/.ctx); without a launchd service for it,
@@ -101,6 +101,15 @@ if managed; then
 fi
 
 run_ctx reindex || echo "reindex failed; run 'ctx reindex' later" >&2
+
+# Installed copies of the Hermes memory provider (default home and every profile) follow
+# the same commit. Hermes picks up the new code at the next session or gateway restart.
+for dir in "$HOME"/.hermes/plugins/ctx "$HOME"/.hermes/profiles/*/plugins/ctx; do
+  if [ -f "$dir/plugin.yaml" ] && grep -q '^name: ctx$' "$dir/plugin.yaml"; then
+    rsync -a --delete --exclude __pycache__ "$ROOT/integrations/hermes/ctx/" "$dir/"
+    echo "synced Hermes plugin: $dir"
+  fi
+done
 printf '{"at":"%s","from":"%s","to":"%s","backup":"%s"}\n' "$(date -u +%FT%TZ)" "$old_version" "$new_version" "$backup" \
   >> "$HOME_DIR/install-log.jsonl"
 [ -z "${CTX_HOME:-}" ] && git tag -f installed HEAD >/dev/null
