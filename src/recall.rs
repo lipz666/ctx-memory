@@ -57,7 +57,51 @@ pub struct Query<'a> {
     pub extra_ids: &'a [String],
     /// Search mode only: raw conversation excerpts ranked together with the memories.
     pub episodes: usize,
+    /// Search mode only: pack the result into this many tokens (see `pack`).
+    pub budget: Option<usize>,
 }
+
+/// What a question asks for, from its wording (no model call).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Intent {
+    /// "how many", "in total", "which ... have I": whole-topic overviews help.
+    pub aggregate: bool,
+    /// "most recently", "first", "how long ago": dated events in order help.
+    pub temporal: bool,
+}
+
+const AGGREGATE_CUES: &[&str] = &[
+    "how many", "how much", "in total", "total", "number of", "count", "list", "all the", "all of the",
+    "which ones", "多少", "几次", "几个", "几种", "总共", "一共", "总计", "哪些", "所有",
+];
+const TEMPORAL_CUES: &[&str] = &[
+    "first", "firstly", "most recent", "most recently", "recently", "latest", "last time", "earliest", "before", "after", "how long", "ago",
+    "order", "when did", "what date", "which day", "最近", "第一次", "最早", "之前", "之后", "多久", "哪天", "顺序",
+];
+
+pub fn intent(text: &str) -> Intent {
+    let text = text.to_lowercase();
+    let has = |cues: &[&str]| {
+        cues.iter().any(|cue| {
+            if cue.chars().any(|c| c as u32 >= 0x2E80) {
+                return text.contains(cue);
+            }
+            text.match_indices(cue).any(|(start, _)| {
+                let before = text[..start].chars().next_back();
+                let after = text[start + cue.len()..].chars().next();
+                before.is_none_or(|c| !c.is_alphanumeric()) && after.is_none_or(|c| !c.is_alphanumeric())
+            })
+        })
+    };
+    Intent { aggregate: has(AGGREGATE_CUES), temporal: has(TEMPORAL_CUES) }
+}
+
+/// Score added to topic digests for aggregate questions.
+const AGGREGATE_DIGEST_BOOST: f64 = 0.15;
+/// Share of a packing budget kept for conversation excerpts once memories are placed.
+const EXCERPT_SHARE: f64 = 0.35;
+/// Characters of an excerpt kept around its best-matching sentence when packing.
+const EXCERPT_WINDOW: usize = 400;
 
 /// Hybrid candidates of `index` among the documents `allow` accepts, best first:
 /// (id, score, reason). Search mode uses the low floors and no relative cutoff; in
@@ -187,8 +231,104 @@ pub fn recall(store: &Store, query: &Query) -> Result<Vec<Hit>> {
     let mut hits = recall_ranked(store, query)?;
     if query.mode == Mode::Search {
         group_by_topic(store, &mut hits);
+        if let (Some(budget), Some(text)) = (query.budget, query.text) {
+            hits = pack(hits, text, budget);
+        }
     }
     Ok(hits)
+}
+
+/// Estimated tokens of a hit as a reader sees it (4 characters per token, plus framing).
+fn hit_tokens(hit: &Hit) -> usize {
+    hit.memory.body.chars().count() / 4 + 12
+}
+
+/// Fit search results into `budget` tokens for a reader: memories (facts, preferences,
+/// digests) first, conversation excerpts after with a reserved share, each excerpt cut to
+/// the user's message and the window most relevant to the question. Items that do not fit
+/// are skipped rather than ending the list. For temporal questions the memories are listed
+/// in date order.
+pub fn pack(hits: Vec<Hit>, question: &str, budget: usize) -> Vec<Hit> {
+    let intent = intent(question);
+    let (mut memories, excerpts): (Vec<Hit>, Vec<Hit>) = hits.into_iter().partition(|h| h.channel != "episode");
+    let excerpts: Vec<Hit> = excerpts
+        .into_iter()
+        .map(|mut h| {
+            h.memory.body = trim_excerpt(&h.memory.body, question);
+            h
+        })
+        .collect();
+    let memory_budget = if excerpts.is_empty() { budget } else { (budget as f64 * (1.0 - EXCERPT_SHARE)) as usize };
+    let mut used = 0;
+    let mut kept_memories = vec![];
+    let mut left = vec![];
+    for hit in memories.drain(..) {
+        let cost = hit_tokens(&hit);
+        if hit.channel == "rule" || used + cost <= memory_budget {
+            used += cost;
+            kept_memories.push(hit);
+        } else {
+            left.push(hit);
+        }
+    }
+    let mut kept_excerpts = vec![];
+    for hit in excerpts {
+        let cost = hit_tokens(&hit);
+        if used + cost <= budget {
+            used += cost;
+            kept_excerpts.push(hit);
+        }
+    }
+    // Room left after the excerpts goes back to memories.
+    for hit in left {
+        let cost = hit_tokens(&hit);
+        if used + cost <= budget {
+            used += cost;
+            kept_memories.push(hit);
+        }
+    }
+    if intent.temporal {
+        let rules = kept_memories.iter().take_while(|h| h.channel == "rule").count();
+        kept_memories[rules..].sort_by_key(|h| date_key(&h.memory));
+    }
+    kept_memories.extend(kept_excerpts);
+    kept_memories
+}
+
+/// The first line of an excerpt (the user's message, shortened) and the window of about
+/// `EXCERPT_WINDOW` characters around the sentence sharing most words with the question.
+fn trim_excerpt(text: &str, question: &str) -> String {
+    if text.chars().count() <= EXCERPT_WINDOW + 200 {
+        return text.to_owned();
+    }
+    let (first, rest) = text.split_once('\n').unwrap_or((text, ""));
+    let first: String = first.chars().take(200).collect();
+    let terms: HashSet<String> = crate::index::tokens(question).into_iter().collect();
+    let sentences: Vec<&str> = rest
+        .split_inclusive(['.', '!', '?', '\n', '。', '！', '？'])
+        .filter(|s| !s.trim().is_empty())
+        .collect();
+    let overlap = |s: &str| crate::index::tokens(s).iter().filter(|t| terms.contains(*t)).count();
+    let Some(best) = (0..sentences.len()).max_by_key(|&i| (overlap(sentences[i]), std::cmp::Reverse(i))) else {
+        return first;
+    };
+    let (mut start, mut end) = (best, best + 1);
+    let len = |a: usize, b: usize| sentences[a..b].iter().map(|s| s.chars().count()).sum::<usize>();
+    while len(start, end) < EXCERPT_WINDOW && (start > 0 || end < sentences.len()) {
+        if end < sentences.len() {
+            end += 1;
+        }
+        if len(start, end) < EXCERPT_WINDOW && start > 0 {
+            start -= 1;
+        }
+    }
+    let window: String = sentences[start..end].concat();
+    format!(
+        "{first}\n{}{}{}",
+        if start > 0 { "…" } else { "" },
+        window.trim(),
+        if end < sentences.len() { "…" } else { "" }
+    )
 }
 
 /// A search plan for a hard question (made by `planner`): sub-queries that each cover
@@ -343,6 +483,8 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
         if let Some(text) = text.as_deref() {
             let search = query.mode == Mode::Search;
             let pool = if search { query.limit.max(16) * 3 } else { 50 };
+            // Aggregate questions need every item of a topic: look further down the list.
+            let pool = if search && intent(text).aggregate { pool * 2 } else { pool };
             // For injection, a much better match in another project means the step is
             // probably not about this project's memories: the cutoff uses the best match
             // anywhere, while candidates come only from memories in scope.
@@ -415,12 +557,20 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
             }
         }
         let mut hits: Vec<Hit> = found.into_values().collect();
+        // Aggregate questions ("how many...") are answered from whole-topic overviews.
+        let aggregate = query.mode == Mode::Search && text.as_deref().is_some_and(|t| intent(t).aggregate);
+        if aggregate {
+            for hit in hits.iter_mut().filter(|h| h.memory.kind == "digest") {
+                hit.score += AGGREGATE_DIGEST_BOOST;
+                hit.reason.push_str(" aggregate");
+            }
+        }
         hits.sort_by(|a, b| {
             b.score
                 .total_cmp(&a.score)
                 .then_with(|| a.memory.id.cmp(&b.memory.id))
         });
-        hits.truncate(query.limit);
+        hits.truncate(if aggregate { query.limit * 3 / 2 } else { query.limit });
         always.sort_by(|a, b| a.memory.id.cmp(&b.memory.id));
         always.extend(hits);
         always
@@ -676,6 +826,39 @@ mod tests {
         assert!(!search("What is new with Mira?", Mode::Inject).contains(&moved), "no entity channel in injection");
         assert!(search("Tell me about Miranda", Mode::Search).is_empty(), "whole words only");
         assert!(mentions("妹妹米拉搬家了", "米拉"));
+    }
+
+    #[test]
+    fn intent_from_wording() {
+        assert_eq!(intent("How many times did I bake last month?"), Intent { aggregate: true, temporal: false });
+        assert_eq!(intent("Which streaming service did I start using most recently?"), Intent { aggregate: false, temporal: true });
+        assert_eq!(intent("我一共去过几次杭州？最近一次是哪天？"), Intent { aggregate: true, temporal: true });
+        assert_eq!(intent("What's my sister's name?"), Intent::default());
+        assert!(!intent("I'm counting on you").aggregate, "whole words only");
+    }
+
+    #[test]
+    fn packing_keeps_memories_first_trims_excerpts_and_skips_what_does_not_fit() {
+        let hit = |id: &str, channel: &'static str, body: String, date: Option<&str>| {
+            let mut memory = Memory::episode(id, Some("q"), body, None);
+            memory.kind = if channel == "episode" { "episode".into() } else { "fact".into() };
+            memory.event_at = date.map(str::to_owned);
+            Hit { memory, channel, score: 0.5, reason: String::new(), group: None }
+        };
+        let filler = "The weather was nice and we talked about many unrelated things. ".repeat(20);
+        let excerpt = format!("[user] Tell me about my baking\n[assistant] {filler} Last week you baked sourdough bread with rye flour. {filler}");
+        let hits = vec![
+            hit("ep_1", "episode", excerpt, None),
+            hit("mem_big", "search", "x".repeat(4000), None),
+            hit("mem_b", "search", "The user baked cookies.".into(), Some("2023-05-18")),
+            hit("mem_a", "search", "The user baked a cake.".into(), Some("2023-05-02")),
+        ];
+        let packed = pack(hits, "When did I first bake sourdough bread?", 600);
+        let ids: Vec<&str> = packed.iter().map(|h| h.memory.id.as_str()).collect();
+        assert_eq!(ids, ["mem_a", "mem_b", "ep_1"], "big memory skipped, dated memories in order, excerpt last");
+        let trimmed = &packed[2].memory.body;
+        assert!(trimmed.starts_with("[user] Tell me about my baking") && trimmed.contains("sourdough bread with rye"));
+        assert!(trimmed.chars().count() < 700, "{}", trimmed.len());
     }
 
     #[test]

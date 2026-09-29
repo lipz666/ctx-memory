@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fs, path::Path};
 
-pub const TYPES: [&str; 7] = [
+pub const TYPES: [&str; 8] = [
     "rule",
     "fact",
     "preference",
@@ -18,6 +18,7 @@ pub const TYPES: [&str; 7] = [
     "skill",
     "intent",
     "digest",
+    "reflection",
 ];
 pub const TRIGGER_KINDS: [&str; 4] = ["keyword", "error", "tool", "file"];
 
@@ -177,6 +178,17 @@ impl Memory {
                 .as_deref()
                 .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
                 .is_none_or(|date| date >= Utc::now())
+    }
+    /// Text for the keyword index: the search text plus topic and entity labels, so a
+    /// question naming the category ("workshops") or a person matches the memory even
+    /// when its body does not. (Vectors use `search_text` alone.)
+    pub fn index_text(&self) -> String {
+        let mut text = self.search_text();
+        for label in self.topics.iter().chain(&self.entities) {
+            text.push('\n');
+            text.push_str(label);
+        }
+        text
     }
     /// Text used for search: title, body, and keyword or error trigger patterns.
     pub fn search_text(&self) -> String {

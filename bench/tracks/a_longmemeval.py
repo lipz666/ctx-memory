@@ -12,6 +12,7 @@ import collections
 import gc
 import concurrent.futures
 import json
+import os
 import random
 import sys
 import time
@@ -121,6 +122,22 @@ def make_system(name, workdir, embed):
         from adapters.ctx import Ctx
         return Ctx(workdir / "ctx-v05-reanswer-home", name="ctx-v05-reanswer", prompt_file=BENCH / "prompts/ctx-general.txt",
                    episodes=5, reuse_from=workdir / "ctx-v05-home")
+    if name == "ctx-v06":
+        # Fresh extraction with reflection, known entities and entity grounding, read with
+        # packing (the ctx binary under test decides which engine features exist).
+        from adapters.ctx import Ctx
+        return Ctx(workdir / "ctx-v06-home", name="ctx-v06", prompt_file=BENCH / "prompts/ctx-general.txt",
+                   episodes=5, budget=2000)
+    if name == "ctx-v06-reanswer":
+        from adapters.ctx import Ctx
+        return Ctx(workdir / "ctx-v06-reanswer-home", name="ctx-v06-reanswer", prompt_file=BENCH / "prompts/ctx-general.txt",
+                   episodes=5, budget=2000, reuse_from=workdir / "ctx-v06-home")
+    if name == "ctx-v05-packed":
+        # The same store; ctx packs the result for the reader's budget (memories first,
+        # excerpts trimmed to the relevant window) and routes by question wording.
+        from adapters.ctx import Ctx
+        return Ctx(workdir / "ctx-v05-packed-home", name="ctx-v05-packed", prompt_file=BENCH / "prompts/ctx-general.txt",
+                   episodes=5, budget=2000, reuse_from=workdir / "ctx-v05-home")
     if name == "mem0":
         from adapters.mem0_adapter import Mem0
         return Mem0(workdir / "mem0", embed)
@@ -141,6 +158,11 @@ def ingest(system, question):
     return time.time() - started
 
 
+# Appended to the answer and judge cache tags: a different salt re-asks the model, so
+# repeated runs measure answer variance instead of replaying cached replies.
+SALT = os.environ.get("BENCH_ANSWER_SALT", "")
+
+
 def answer_and_grade(system, question, budget):
     started = time.time()
     extra = {"now": question["question_date"]} if getattr(system, "accepts_now", False) else {}
@@ -149,10 +171,10 @@ def answer_and_grade(system, question, budget):
     kept = retrieved if system.unbounded else fit_budget(retrieved, budget)
     memories = "\n".join(f"- {item}" for item in kept) or "(no memories)"
     reply = llm.chat([{"role": "user", "content": ANSWER_PROMPT.format(memories=memories, date=question["question_date"], question=question["question"])}],
-                     max_tokens=1500, tag="answer")
+                     max_tokens=1500, tag="answer" + SALT)
     prompt = get_anscheck_prompt(question["question_type"], question["question"], question["answer"], reply,
                                  abstention=question["question_id"].endswith("_abs"))
-    verdict = llm.chat([{"role": "user", "content": prompt}], max_tokens=200, tag="judge")
+    verdict = llm.chat([{"role": "user", "content": prompt}], max_tokens=200, tag="judge" + SALT)
     return {"retrieved_items": len(retrieved), "kept_items": len(kept), "kept_tokens": sum(len(k) for k in kept) // 4,
             "search_ms": round(search_ms, 1), "hypothesis": reply, "judge": verdict.strip()[:200],
             "correct": verdict.strip().lower().startswith("yes") or "yes" in verdict.strip().lower()[:10]}

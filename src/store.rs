@@ -882,7 +882,7 @@ impl Store {
     }
     fn index_into(cache: &mut Cache, memory: &Memory) {
         let text = memory.search_text();
-        cache.index.upsert(&memory.id, &text);
+        cache.index.upsert(&memory.id, &memory.index_text());
         cache.text_hash.insert(
             memory.id.clone(),
             hex::encode(Sha256::digest(text.as_bytes())),

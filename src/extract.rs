@@ -212,7 +212,7 @@ pub fn rebuild_digests(store: &Store) -> Result<usize> {
     let ids: Vec<String> = store
         .memories()
         .into_iter()
-        .filter(|m| m.recallable() && m.kind != "digest" && !m.topics.is_empty())
+        .filter(|m| m.recallable() && !matches!(m.kind.as_str(), "digest" | "reflection") && !m.topics.is_empty())
         .map(|m| m.id)
         .collect();
     Ok(refresh_digests(store, ids.iter())?.len())
@@ -273,7 +273,9 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
                 ..Default::default()
             },
         )? {
-            if hit.memory.kind != "digest" && related.get(&hit.memory.id).is_none_or(|h| h.score < hit.score) {
+            if !matches!(hit.memory.kind.as_str(), "digest" | "reflection")
+                && related.get(&hit.memory.id).is_none_or(|h| h.score < hit.score)
+            {
                 related.insert(hit.memory.id.clone(), hit);
             }
         }
@@ -302,6 +304,11 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
         "session_date": session.observed_at.as_deref().unwrap_or(&session.last_seen),
         "existing_memories": existing,
         "known_topics": known_topics,
+        "known_entities": if store.config.extraction.known_entities {
+            known_entities(store, project)
+        } else {
+            vec![]
+        },
         "transcript": transcript.digest,
     })
     .to_string();
@@ -354,11 +361,21 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
         output.memories,
         &transcript.user_texts,
         &transcript.digest,
+        &input,
     )?;
     let digests = refresh_digests(store, result.0.iter().chain(&result.1))?;
+    // A failed reflection never fails the extraction; the next session retries it.
+    let touched: Vec<String> = result.0.iter().chain(&result.1).cloned().collect();
+    let reflections = if store.config.extraction.reflection {
+        crate::reflect::reflect(store, &touched)
+            .await
+            .unwrap_or_else(|error| vec![format!("failed: {error:#}")])
+    } else {
+        vec![]
+    };
     store.finish_session(&session.key, "done", None)?;
     Ok(
-        json!({"session":session.key,"created":result.0,"updated":result.1,"skipped":result.2,"skip_reason":output.skip_reason,"episodes":episodes,"digests":digests}),
+        json!({"session":session.key,"created":result.0,"updated":result.1,"skipped":result.2,"skip_reason":output.skip_reason,"episodes":episodes,"digests":digests,"reflections":reflections}),
     )
 }
 
@@ -375,8 +392,12 @@ fn apply(
     proposals: Vec<Proposal>,
     user_texts: &[String],
     transcript: &str,
+    grounding: &str,
 ) -> Result<(Vec<String>, Vec<String>, Vec<String>)> {
     let transcript = transcript.to_lowercase();
+    // Names may come from the conversation or from what the model was shown (known
+    // entities, related memories), which is how "my sister" becomes "Mira".
+    let grounding = grounding.to_lowercase();
     let (mut created, mut updated, mut skipped) = (vec![], vec![], vec![]);
     let users = normalize(&user_texts.join("\n"));
     let embedder = store.embedder.get();
@@ -411,7 +432,10 @@ fn apply(
         };
         let event_at = proposal.event_date.as_deref().and_then(normalize_date);
         let topics = normalize_topics(&proposal.topics);
-        let entities = normalize_entities(&proposal.entities);
+        let entities: Vec<String> = normalize_entities(&proposal.entities)
+            .into_iter()
+            .filter(|e| grounding.contains(&e.to_lowercase()))
+            .collect();
         let triggers = grounded_triggers(&proposal.triggers, &transcript);
         if proposal.action == "update"
             && let Some(id) = proposal.id.as_deref()
@@ -460,7 +484,9 @@ fn apply(
         // A changed fact: the new memory replaces the old one, which stays as history.
         let replaced = match (proposal.action.as_str(), proposal.id.as_deref()) {
             ("supersede", Some(id)) => store.memory(id).filter(|old| {
-                old.recallable() && old.source != "user" && old.kind != "rule" && old.kind != "digest"
+                old.recallable()
+                    && old.source != "user"
+                    && !matches!(old.kind.as_str(), "rule" | "digest" | "reflection")
             }),
             _ => None,
         };
@@ -516,6 +542,34 @@ fn apply(
         created.push(memory.id);
     }
     Ok((created, updated, skipped))
+}
+
+/// People, places and things already known in this scope (most frequent first), each with
+/// a line of context, so the model can resolve "my sister" or "the new job" to a name.
+fn known_entities(store: &Store, project: Option<&str>) -> Vec<Value> {
+    let memories: Vec<Memory> = store
+        .memories()
+        .into_iter()
+        .filter(|m| m.recallable() && m.in_scope(project) && !matches!(m.kind.as_str(), "digest" | "reflection"))
+        .collect();
+    let mut counts: HashMap<String, (usize, String)> = HashMap::new();
+    for memory in &memories {
+        for entity in &memory.entities {
+            let entry = counts.entry(entity.clone()).or_insert((0, String::new()));
+            entry.0 += 1;
+            // The shortest memory naming it reads best as context.
+            if entry.1.is_empty() || memory.body.len() < entry.1.len() {
+                entry.1 = memory.body.clone();
+            }
+        }
+    }
+    let mut entities: Vec<(String, (usize, String))> = counts.into_iter().collect();
+    entities.sort_by(|a, b| b.1.0.cmp(&a.1.0).then_with(|| a.0.cmp(&b.0)));
+    entities
+        .into_iter()
+        .take(20)
+        .map(|(name, (_, context))| json!({"name": name, "context": context.chars().take(100).collect::<String>()}))
+        .collect()
 }
 
 /// Commands too common to be a useful cue on their own.
@@ -594,7 +648,7 @@ pub fn refresh_digests<'a>(
     for (scope, topic) in keys {
         let mut members: Vec<&Memory> = all
             .iter()
-            .filter(|m| m.recallable() && m.kind != "digest" && m.scope == scope)
+            .filter(|m| m.recallable() && !matches!(m.kind.as_str(), "digest" | "reflection") && m.scope == scope)
             .filter(|m| m.topics.contains(&topic))
             .collect();
         let existing = all
@@ -652,7 +706,7 @@ pub fn refresh_digests<'a>(
 }
 
 /// Date shown in a digest line: the event date, else the date it was said.
-fn digest_date(memory: &Memory) -> String {
+pub(crate) fn digest_date(memory: &Memory) -> String {
     memory
         .event_at
         .clone()
@@ -733,7 +787,9 @@ fn near_duplicate(
     let target_numbers = numbers(&strip_dates(content));
     Ok(store.with_index(|index, all| {
         all.values()
-            .filter(|m: &&Memory| m.recallable() && m.scope == scope && m.kind != "digest")
+            .filter(|m: &&Memory| {
+                m.recallable() && m.scope == scope && !matches!(m.kind.as_str(), "digest" | "reflection")
+            })
             .find(|m| {
                 if normalize(&m.body) == target {
                     return true;
@@ -942,6 +998,7 @@ mod tests {
             ],
             &["以后都用中文回答，谢谢".into()],
             "",
+            "",
         )
         .unwrap();
         assert_eq!(created.len(), 2, "{skipped:?}");
@@ -1000,6 +1057,7 @@ mod tests {
             ],
             &[],
             "",
+            "",
         )
         .unwrap();
         assert!(refresh_digests(&store, two.iter()).unwrap().is_empty(), "two members: no digest yet");
@@ -1008,6 +1066,7 @@ mod tests {
             &session,
             vec![workshop("The user attended a digital marketing workshop for $500.", None)],
             &[],
+            "",
             "",
         )
         .unwrap();
@@ -1055,7 +1114,7 @@ mod tests {
             topics: vec!["jewelry".into()],
             ..Default::default()
         };
-        let (ids, _, _) = apply(&store, &session, (0..25).map(item).collect(), &[], "").unwrap();
+        let (ids, _, _) = apply(&store, &session, (0..25).map(item).collect(), &[], "", "miso tofu").unwrap();
         let digest = store.memory(&refresh_digests(&store, ids.iter()).unwrap()[0]).unwrap();
         assert_eq!(digest.body.lines().count(), 26, "every member listed");
         assert!(digest.body.chars().count() < TOPIC_DIGEST_CHARS + 25 * 30, "{}", digest.body.len());
@@ -1118,7 +1177,7 @@ mod tests {
             entities: vec!["Miso".into(), "Tofu".into(), "miso".into()],
             ..Default::default()
         };
-        let (created, _, _) = apply(&store, &session("s1", "2023/05/20"), vec![first], &[], "").unwrap();
+        let (created, _, _) = apply(&store, &session("s1", "2023/05/20"), vec![first], &[], "", "miso tofu").unwrap();
         let old = store.memory(&created[0]).unwrap();
         assert_eq!(old.event_at.as_deref(), Some("2023-05-20"));
         assert_eq!(old.topics, ["cats"]);
@@ -1132,7 +1191,7 @@ mod tests {
             event_date: Some("2023-07".into()),
             ..Default::default()
         };
-        let (created, updated, _) = apply(&store, &session("s2", "2023/07/02"), vec![change], &[], "").unwrap();
+        let (created, updated, _) = apply(&store, &session("s2", "2023/07/02"), vec![change], &[], "", "miso tofu").unwrap();
         let current = store.memory(&created[0]).unwrap();
         let old = store.memory(&old.id).unwrap();
         assert_eq!(updated, std::slice::from_ref(&old.id));

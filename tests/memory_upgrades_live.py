@@ -85,7 +85,7 @@ def step1(ctx):
         ("I adopted two kittens today, Miso and Tofu! With my old cat Bean that makes 3 cats at home.",
          "Congratulations on Miso and Tofu!")])
     ctx.session("s2", "2023/07/02 (Sun) 18:30", [
-        ("Big news: last Saturday I took in a stray, Pickle, so now I have 4 cats. Any tips on introducing them?",
+        ("Big news: yesterday (Saturday) I took in a stray, Pickle, so now I have 4 cats. Any tips on introducing them?",
          "Introduce Pickle slowly, with separate rooms first.")])
     memories = ctx.memories()
     show(memories)
@@ -93,7 +93,7 @@ def step1(ctx):
     current = [m for m in memories if m["status"] == "active" and m.get("supersedes")]
     assert superseded and current, "the cat count was not superseded"
     stray = [m for m in memories if "Pickle" in m["body"] and m.get("event_at")]
-    assert any(m["event_at"].startswith("2023-07-01") or m["event_at"].startswith("2023-07") for m in stray), stray
+    assert any(m["event_at"].startswith("2023-07-01") for m in stray), stray
     hits = ctx.recall("How many cats do I have now?")
     top = hits[0]
     print("   top:", top["content"][:100], "| history:", [h["content"][:60] for h in top.get("history", [])])

@@ -142,7 +142,7 @@ export default {
           if (hits.length) {
             const lines = hits.map((h) => {
               const date = String(h.observed_at || h.created_at || "").slice(0, 10);
-              const label = h.type === "preference" ? "(user preference) " : "";
+              const label = { preference: "(user preference) ", reflection: "(summary) " }[h.type] || "";
               return `- ${date ? `[${date}] ` : ""}${label}${String(h.content || "").trim()}`;
             });
             result.prependContext = `<ctx-memory>\nRelevant long-term memory from earlier sessions:\n${lines.join("\n")}\n</ctx-memory>`;

@@ -16,6 +16,7 @@ mod memory;
 mod observer;
 mod proxy;
 mod recall;
+mod reflect;
 mod server;
 mod session;
 mod store;

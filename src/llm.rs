@@ -13,7 +13,7 @@ static CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLock::new(|
 });
 
 /// One chat completion. Counts against the daily engine budget and is logged. Transient
-/// failures (connection errors, timeouts, 408/429/5xx) are retried with backoff, except
+/// failures (connection errors, timeouts, 408/429/5xx, empty replies) are retried with backoff, except
 /// for the Gate, whose latency budget does not allow it.
 pub async fn chat(
     store: &Store,
@@ -78,11 +78,12 @@ pub async fn chat(
             }
             return Err(last_error);
         }
-        return raw
-            .pointer("/choices/0/message/content")
-            .and_then(Value::as_str)
-            .map(str::to_owned)
-            .ok_or_else(|| anyhow::anyhow!("model reply had no content"));
+        // A successful reply without content (gateway hiccup, empty generation) is
+        // retried like a transient failure.
+        match raw.pointer("/choices/0/message/content").and_then(Value::as_str) {
+            Some(content) if !content.trim().is_empty() => return Ok(content.to_owned()),
+            _ => last_error = anyhow::anyhow!("model reply had no content"),
+        }
     }
     Err(last_error)
 }

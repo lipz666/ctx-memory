@@ -131,6 +131,13 @@ pub struct ExtractionConfig {
     /// Agents that are personal assistants rather than coding agents: their sessions
     /// use the general extraction prompt (facts and events about the user).
     pub general_agents: Vec<String>,
+    /// Consolidate a topic's memories with a model call when it crosses a size threshold
+    /// (preferences, current state, counts). Off: no measurable gain on the LongMemEval
+    /// dev set for +32% extraction tokens, and a reflection goes stale between thresholds.
+    pub reflection: bool,
+    /// Show the extractor the most frequent known entities (resolving "my sister" to a
+    /// name). Off: no measurable gain on the dev set for +20% extraction input.
+    pub known_entities: bool,
 }
 impl Default for ExtractionConfig {
     fn default() -> Self {
@@ -141,6 +148,8 @@ impl Default for ExtractionConfig {
             prompt_file: None,
             global_scope: true,
             general_agents: vec!["hermes".into()],
+            reflection: false,
+            known_entities: false,
         }
     }
 }

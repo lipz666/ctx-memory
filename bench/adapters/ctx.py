@@ -110,7 +110,8 @@ class CtxService:
 def render(hit):
     """One retrieved item as the answer model sees it: when it was said, the content, when
     the event happened, and earlier values of a fact that changed."""
-    label = "(the user's preference) " if hit.get("type") == "preference" else ""
+    label = {"preference": "(the user's preference) ",
+             "reflection": "(summary of what the user has shared about this topic) "}.get(hit.get("type"), "")
     text = f"[{hit.get('observed_at') or hit.get('created_at') or ''}] {label}{hit['content']}"
     if hit.get("event_at"):
         text += f" (event date: {hit['event_at']})"
@@ -127,18 +128,31 @@ def namespace(ns):
 class Ctx(MemorySystem):
     """ctx with its built-in extraction prompt (tuned for coding work), or a variant prompt."""
 
-    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False):
+    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None):
         self.name = name
+        self.failed_sessions = []
         self.mode = mode
         self.episodes = episodes
         self.deep = deep  # plan sub-queries and a date window (one model call per search)
+        # Ask ctx to pack results for the reader (memories first, excerpts trimmed); a
+        # margin below the harness budget covers the rendering added here.
+        self.budget = budget
         # Reuse another variant's memory store (same memories, no new extraction) and only
         # build the conversation excerpts; ingestion then does nothing.
         self.reuse_from = reuse_from
+        # BENCH_RESUME=1 continues an interrupted run on the same store: finished sessions
+        # are skipped, ingested but unfinished ones are only extracted again.
+        self.resume = os.environ.get("BENCH_RESUME") == "1" and reuse_from is None and (Path(home) / "config.yaml").exists()
+        self.done = {}
         self.service = CtxService(home, prompt_file=prompt_file, embed_workers=embed_workers, embedding=embedding, recall=recall,
-                                  fresh=reuse_from is None)
+                                  fresh=reuse_from is None and not self.resume)
 
     def setup(self):
+        if self.resume:
+            import sqlite3
+            db = sqlite3.connect(f"file:{self.service.home / 'state/events.db'}?mode=ro", uri=True)
+            self.done = dict(db.execute("SELECT key, status FROM sessions"))
+            db.close()
         if self.reuse_from:
             if self.service.home.exists():
                 shutil.rmtree(self.service.home)
@@ -153,15 +167,22 @@ class Ctx(MemorySystem):
         if self.reuse_from:
             return None
         key = f"{namespace(ns)}:{session_id}"
-        self.service.request("/api/v1/sessions/ingest", {"session": key, "agent": "bench", "project": namespace(project or ns),
-                                                         "observed_at": timestamp, "messages": messages})
+        status = self.done.get(key)
+        if status in ("done", "skipped", "failed"):
+            return None
+        if status is None:
+            self.service.request("/api/v1/sessions/ingest", {"session": key, "agent": "bench", "project": namespace(project or ns),
+                                                             "observed_at": timestamp, "messages": messages})
         from common.llm import wait_for_gateway
         for attempt in range(5):
             try:
                 return self.service.request(f"/api/v1/sessions/{urllib.parse.quote(key, safe='')}/extract?wait=true", {})
             except urllib.error.HTTPError as error:
                 if attempt == 4:
-                    raise RuntimeError(f"extraction failed: {error.read()[:300]!r}") from error
+                    # Like the daemon, a session whose extraction keeps failing is left out
+                    # and the next sessions are still ingested (its excerpts are kept).
+                    self.failed_sessions.append(f"{key}: {error.read()[:200]!r}")
+                    return None
                 wait_for_gateway()
 
     def add_memory(self, ns, text, project=None):
@@ -177,10 +198,13 @@ class Ctx(MemorySystem):
                 "episodes": self.episodes, "deep": str(self.deep).lower()}
         if now:
             args["now"] = now
+        if self.budget:
+            args["budget"] = int(self.budget * 0.9)
         hits = self.service.request(f"/api/v1/recall?{urllib.parse.urlencode(args)}")
         return [(render(h), h["score"]) for h in hits]
 
     def usage(self):
         stats = self.service.request("/api/v1/stats")
         return {k: stats.get(k) for k in ("memories", "episodes", "engine_llm_calls", "engine_input_tokens",
-                                           "engine_output_tokens", "engine_failed_calls", "extracted_sessions")}
+                                           "engine_output_tokens", "engine_failed_calls", "extracted_sessions")} | {
+            "failed_sessions": len(self.failed_sessions)}

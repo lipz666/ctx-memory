@@ -207,6 +207,9 @@ pub struct RecallParams {
     deep: Option<bool>,
     /// "Today" for relative dates in a deep search (default: the current date).
     now: Option<String>,
+    /// Search mode: pack the result for a reader into this many tokens (memories first,
+    /// excerpts cut to their relevant part).
+    budget: Option<usize>,
 }
 pub async fn recall(
     State(app): State<App>,
@@ -240,6 +243,7 @@ pub async fn recall(
                     .episodes
                     .unwrap_or(store.config.recall.search_episodes)
                     .min(20),
+                budget: params.budget,
                 ..Default::default()
             };
         match &plan {

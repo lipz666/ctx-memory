@@ -246,7 +246,7 @@ class CtxMemoryProvider(MemoryProvider):
         lines = []
         for hit in hits:
             date = (hit.get("observed_at") or hit.get("created_at") or "")[:10]
-            label = "(user preference) " if hit.get("type") == "preference" else ""
+            label = {"preference": "(user preference) ", "reflection": "(summary) "}.get(hit.get("type"), "")
             text = f"{label}{hit.get('content', '').strip()}"
             lines.append(f"- [{date}] {text}" if date else f"- {text}")
         return "## Long-term memory (ctx)\n" + "\n".join(lines) if lines else ""
