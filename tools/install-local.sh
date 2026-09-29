@@ -56,7 +56,7 @@ if [ "${1:-}" = "--rollback" ]; then
   cp "$backup/ctx" "$BIN.new" && mv -f "$BIN.new" "$BIN"
   restart
   managed && echo "daemon: $(health || echo 'not answering')"
-  echo "restored $("$BIN" --version) from $backup"
+  echo "restored $("$BIN" --version 2>/dev/null || echo "an older ctx") from $backup"
   exit 0
 fi
 
