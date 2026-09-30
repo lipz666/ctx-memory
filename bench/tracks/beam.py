@@ -122,7 +122,7 @@ def make_system(name, workdir, budget):
     raise ValueError(name)
 
 
-def run_conversation(system, conversation, budget, session_chars, rows_path, lock, max_sessions=0):
+def run_conversation(system, conversation, budget, session_chars, rows_path, lock, max_sessions=0, abilities=ABILITIES):
     ns = f"beam-{conversation['conversation_id']}"
     started = time.time()
     count = 0
@@ -135,7 +135,7 @@ def run_conversation(system, conversation, budget, session_chars, rows_path, loc
     ingest_seconds = time.time() - started
     probing = ast.literal_eval(conversation["probing_questions"])
     rows = []
-    for ability in ABILITIES:
+    for ability in abilities:
         for index, question in enumerate(probing.get(ability, [])):
             row = {"conversation": conversation["conversation_id"], "ability": ability, "index": index,
                    "question": question["question"], "sessions": count, "ingest_seconds": round(ingest_seconds, 1)}
@@ -191,6 +191,7 @@ def main():
     parser.add_argument("--workers", type=int, default=20)
     parser.add_argument("--conversations", default="", help="comma-separated conversation ids (default: all)")
     parser.add_argument("--max-sessions", type=int, default=0, help="smoke tests: ingest only the first N sessions")
+    parser.add_argument("--abilities", default="", help="comma-separated abilities to answer (default: all ten)")
     parser.add_argument("--shard", default="", help="i/n: only conversations whose position % n == i-1")
     args = parser.parse_args()
     conversations = load(args.split)
@@ -200,6 +201,7 @@ def main():
     if args.shard:
         i, n = map(int, args.shard.split("/"))
         conversations = [c for k, c in enumerate(conversations) if k % n == i - 1]
+    abilities = [a for a in ABILITIES if not args.abilities or a in args.abilities.split(",")]
     args.out.mkdir(parents=True, exist_ok=True)
     memguard.start_monitor(args.out / "memory.log")
     import threading
@@ -216,14 +218,14 @@ def main():
         try:
             with concurrent.futures.ThreadPoolExecutor(min(args.workers, len(conversations))) as pool:
                 futures = [pool.submit(run_conversation, system, c, args.budget, args.session_chars, rows_path, lock,
-                                       args.max_sessions)
+                                       args.max_sessions, abilities)
                            for c in conversations]
                 for future in concurrent.futures.as_completed(futures):
                     done = future.result()
                     rows += done
                     mean = sum(r["score"] for r in done) / max(1, len(done))
                     print(f"[{name}] conversation {done[0]['conversation'] if done else '?'}: {len(done)} questions, mean {mean:.3f} "
-                          f"({len(rows)}/{20 * len(conversations)})", flush=True)
+                          f"({len(rows)}/{2 * len(abilities) * len(conversations)})", flush=True)
             usage = system.usage()
             usage["reader_judge"] = {k: llm.STATS[k] - before[k] for k in ("calls", "input_tokens", "output_tokens")}
         finally:

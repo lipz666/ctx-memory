@@ -833,6 +833,11 @@ fn conflict_notes(store: &Store, hits: &mut Vec<Hit>) {
             continue;
         }
         let Some(other) = hit.memory.conflicts_with.iter().find_map(|id| store.memory(id)) else { continue };
+        // Only a denial against a statement is a contradiction to raise; two different
+        // values of one thing read as a change.
+        if !(crate::contradict::negative(&hit.memory.body) || crate::contradict::negative(&other.body)) {
+            continue;
+        }
         let said = |m: &Memory| m.observed_at.clone().unwrap_or_else(|| m.created_at.chars().take(10).collect());
         let (first, second) = if (said(&other), &other.created_at) < (said(&hit.memory), &hit.memory.created_at) {
             (&other, &hit.memory)
@@ -939,6 +944,7 @@ pub fn conflicts(store: &Store, memory: &Memory) -> Vec<(String, String)> {
         .conflicts_with
         .iter()
         .filter_map(|id| store.memory(id))
+        .filter(|m| crate::contradict::negative(&m.body) || crate::contradict::negative(&memory.body))
         .map(|m| {
             let date = m
                 .event_at

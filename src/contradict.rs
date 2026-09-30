@@ -138,8 +138,15 @@ pub async fn check(store: &Store, project: Option<&str>, created: &[String]) -> 
     let reply = llm::chat(store, "contradict", PROMPT, &json!({"pairs": input}).to_string(), 400, Duration::from_secs(120)).await?;
     let output: Output = serde_json::from_str(llm::unfence(&reply)?)?;
     let mut contested = vec![];
+    // Only a denial makes a conflict; two different values of one thing are an update,
+    // whatever the model called them.
+    let mut updates = output.updates;
     for number in output.conflicts {
         let Some((a, b)) = pairs.get(number.wrapping_sub(1)) else { continue };
+        if !(negative(&a.body) || negative(&b.body)) {
+            updates.push(number);
+            continue;
+        }
         // Re-read: an earlier pair may have changed either side.
         let (Some(mut a), Some(mut b)) = (store.memory(&a.id), store.memory(&b.id)) else { continue };
         let (a_id, b_id) = (a.id.clone(), b.id.clone());
@@ -156,7 +163,7 @@ pub async fn check(store: &Store, project: Option<&str>, created: &[String]) -> 
         store.save_memory(&b, &format!("{} conflicts with {}", b.id, a.id))?;
         contested.extend([a.id, b.id]);
     }
-    for number in output.updates {
+    for number in updates {
         let Some((old, new)) = pairs.get(number.wrapping_sub(1)) else { continue };
         let (Some(mut old), Some(mut new)) = (store.memory(&old.id), store.memory(&new.id)) else { continue };
         // The earlier statement is replaced; one the user wrote, or already replaced or

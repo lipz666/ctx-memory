@@ -26,10 +26,13 @@ pub const BRIEF_TOKENS: usize = 800;
 const PROMPT: &str = "You prepare a memory brief for an assistant that is about to answer the user's question. You get the question, today's date when known, and material retrieved from the user's long-term memory: standing instructions from the user, unresolved contradictions, a timeline of past conversations, memories (each with the date it was said, and where known the event date, earlier values, and how often it came up) and raw conversation excerpts.
 
 Write the brief: everything in the material that the answer needs, and nothing else.
+- When the question has a short factual answer (a count, a date or duration, a value, a name, yes or no), begin with one line \"Answer: ...\": the direct answer as a full sentence that carries what it rests on, so that it can be repeated as it stands: a count names the items counted (\"Two columns: 'category' and 'notes'\"), a date difference names both dates (\"21 days, from March 15, 2024 to April 5, 2024\"), a value says since when. Commit to the one best-supported answer; do not offer alternatives (\"or 5 if...\") unless the user's own statements contradict each other. When the question asks for a summary, an explanation, advice, a plan or how to do something, write no answer line: the assistant composes that answer itself from the facts, instructions and preferences below.
 - State the relevant facts with their dates, oldest first, keeping names, numbers, dates and wording exact.
-- When the question needs a count, a total, a date difference, a duration or an order, work it out from the material and state the result with the items or the two dates it rests on. Count each separate event or mention once. An order of things the user brought up follows the conversations from the first to the last, not only the beginning.
-- When a value changed over time (a moved deadline, a raised budget, a new count), that is an update, not a contradiction: give the current value, what it was before and when it changed.
-- Only when the material has an \"Unresolved contradiction\" item about what is asked: say so first, quote both statements with their dates, and note that the user should be asked which one is correct; do not pick a side. Do not call anything else a contradiction.
+- For a count or a total: count exactly what the question asks for. When it asks what the user mentioned, asked or did, count the user's own statements, not the assistant's suggestions or examples; leave out near matches and repeats of the same item. List the counted items with their dates.
+- For a date difference or a duration: use the dates of the two events themselves (event dates, or dates stated in the text), not the dates on which they were talked about. Give the difference in the unit asked.
+- For an order of things the user brought up: follow the conversations from the first to the last, not only the beginning.
+- When a value changed over time (a moved deadline, a raised budget, a new count), that is an update, not a contradiction. The answer is the most recent value (a statement that explicitly changes the value, such as \"raised to\" or \"moved to\", outweighs an older figure repeated in passing), then what it was before and when it changed. Give the one value asked for, not every related figure.
+- A contradiction is an \"Unresolved contradiction\" item in the material, or the user denying something they also reported (\"I have never done X\" against an account of doing X) with no change described; different values of one thing over time are never one. When what is asked is contradicted in this way, the answer line says so, quotes both statements with their dates and notes that the user should be asked which one is correct; do not pick a side.
 - List the user's standing instructions that apply to this kind of question under \"Instructions to follow in the answer:\", and the user's preferences that bear on it (tools, formats, styles they like or avoid) under \"Preferences to respect:\".
 - For a summary or an account of how something progressed, cover the whole span from the first conversation to the last, including what the assistant recommended.
 - Read the conversation excerpts as closely as the memories: a detail asked for may appear only there. Only when nothing in the material states what is asked, write: \"The memory contains no information about <what is missing>.\" Do not fill the gap with related facts or guesses.
@@ -53,10 +56,12 @@ fn render(store: &Store, hit: &Hit) -> String {
         (_, _, "superseded") => "earlier statement, changed later: ",
         _ => "",
     };
-    let mut text = format!("[{date}] {label}{}", memory.body);
-    if let Some(event) = &memory.event_at {
-        text.push_str(&format!(" (event date: {event})"));
-    }
+    // The date of the event itself leads: a reader asked how long passed between two
+    // events otherwise subtracts the dates of the conversations.
+    let mut text = match &memory.event_at {
+        Some(event) => format!("[event date {event}; said {date}] {label}{}", memory.body),
+        None => format!("[said {date}] {label}{}", memory.body),
+    };
     if !memory.mentioned_at.is_empty() {
         text.push_str(&format!(
             " (brought up {} times: first as dated, again on {})",

@@ -117,11 +117,12 @@ def render(hit):
         return hit["content"]
     if hit.get("status") == "superseded":
         label = "(earlier statement, changed later) " + label
-    text = f"[{hit.get('observed_at') or hit.get('created_at') or ''}] {label}{hit['content']}"
-    if hit.get("event_at"):
-        text += f" (event date: {hit['event_at']})"
+    said = hit.get('observed_at') or hit.get('created_at') or ''
+    # The date of the event itself leads; "said" is when the conversation took place.
+    dates = f"event date {hit['event_at']}; said {said}" if hit.get("event_at") else said
+    text = f"[{dates}] {label}{hit['content']}"
     if hit.get("mentioned"):
-        text = text.replace("] ", f", mention #{hit['mentioned']}] ", 1)
+        text = text.replace("] ", f"; mention #{hit['mentioned']}] ", 1)
     again = hit.get("mentioned_at") or []
     if again:
         text += f" (the user brought this up {len(again) + 1} times: first as dated, again on {', '.join(again)})"
