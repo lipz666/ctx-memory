@@ -2,6 +2,7 @@ mod adapters;
 mod api;
 mod config;
 mod consolidation;
+mod contradict;
 mod embed;
 mod episode;
 mod experimental;

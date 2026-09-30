@@ -115,6 +115,11 @@ def render(hit):
     text = f"[{hit.get('observed_at') or hit.get('created_at') or ''}] {label}{hit['content']}"
     if hit.get("event_at"):
         text += f" (event date: {hit['event_at']})"
+    if hit.get("mentioned"):
+        text = text.replace("] ", f", mention #{hit['mentioned']}] ", 1)
+    conflicts = hit.get("conflicts") or []
+    if conflicts:
+        text += " (CONFLICTS with what the user also said: " + "; ".join(f"[{c['date']}] {c['content']}" for c in conflicts) + ")"
     history = hit.get("history") or []
     if history:
         text += " (previously: " + "; ".join(f"[{h['date']}] {h['content']}" for h in history) + ")"

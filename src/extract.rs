@@ -364,6 +364,14 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
         &input,
     )?;
     let digests = refresh_digests(store, result.0.iter().chain(&result.1))?;
+    // A failed check never fails the extraction.
+    let contested = if store.config.extraction.contradictions {
+        crate::contradict::check(store, project, &result.0)
+            .await
+            .unwrap_or_else(|error| vec![format!("failed: {error:#}")])
+    } else {
+        vec![]
+    };
     // A failed reflection never fails the extraction; the next session retries it.
     let touched: Vec<String> = result.0.iter().chain(&result.1).cloned().collect();
     let reflections = if store.config.extraction.reflection {
@@ -375,7 +383,7 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
     };
     store.finish_session(&session.key, "done", None)?;
     Ok(
-        json!({"session":session.key,"created":result.0,"updated":result.1,"skipped":result.2,"skip_reason":output.skip_reason,"episodes":episodes,"digests":digests,"reflections":reflections}),
+        json!({"session":session.key,"created":result.0,"updated":result.1,"skipped":result.2,"skip_reason":output.skip_reason,"episodes":episodes,"digests":digests,"contested":contested,"reflections":reflections}),
     )
 }
 
@@ -481,6 +489,14 @@ fn apply(
             updated.push(existing.id);
             continue;
         }
+        // A statement that contradicts a memory without describing a change: keep both,
+        // contested and linked, so a reader sees that the user said both.
+        let contradicted = match (proposal.action.as_str(), proposal.id.as_deref()) {
+            ("contradict", Some(id)) => store.memory(id).filter(|old| {
+                old.recallable() && !matches!(old.kind.as_str(), "rule" | "digest" | "reflection")
+            }),
+            _ => None,
+        };
         // A changed fact: the new memory replaces the old one, which stays as history.
         let replaced = match (proposal.action.as_str(), proposal.id.as_deref()) {
             ("supersede", Some(id)) => store.memory(id).filter(|old| {
@@ -491,6 +507,7 @@ fn apply(
             _ => None,
         };
         if replaced.is_none()
+            && contradicted.is_none()
             && let Some(duplicate) = near_duplicate(
                 store,
                 embedder.as_deref(),
@@ -522,7 +539,20 @@ fn apply(
         memory.event_at = event_at;
         memory.topics = topics;
         memory.entities = entities;
-        if let Some(mut old) = replaced {
+        if let Some(mut other) = contradicted {
+            memory.status = "contested".into();
+            memory.conflicts_with.push(other.id.clone());
+            if other.source != "user" {
+                other.status = "contested".into();
+            }
+            if !other.conflicts_with.contains(&memory.id) {
+                other.conflicts_with.push(memory.id.clone());
+            }
+            other.updated_at = Utc::now().to_rfc3339();
+            store.save_memory(&memory, &format!("extract {} contradicts {}", memory.id, other.id))?;
+            store.save_memory(&other, &format!("{} contradicted by {}", other.id, memory.id))?;
+            updated.push(other.id);
+        } else if let Some(mut old) = replaced {
             memory.supersedes.push(old.id.clone());
             if memory.topics.is_empty() {
                 memory.topics = old.topics.clone();
@@ -1206,5 +1236,35 @@ mod tests {
         assert_eq!(recall::history(&store, &current, 3), [("2023-05-20".to_string(), old.body.clone())]);
         assert_eq!(normalize_date("2023-5-1"), None);
         assert_eq!(normalize_date("2023"), Some("2023".into()));
+
+        // A contradiction without a change keeps both sides, contested and linked.
+        let said = Proposal {
+            kind: "fact".into(),
+            scope: "project".into(),
+            content: "The user has completed 5 coin toss probability problems.".into(),
+            ..Default::default()
+        };
+        let (created, _, _) = apply(&store, &session("s3", "2023/07/05"), vec![said], &[], "", "").unwrap();
+        let first = created[0].clone();
+        let denial = Proposal {
+            action: "contradict".into(),
+            id: Some(first.clone()),
+            kind: "fact".into(),
+            scope: "project".into(),
+            content: "The user says they have never worked on a coin toss probability problem.".into(),
+            ..Default::default()
+        };
+        let (created, updated, _) = apply(&store, &session("s4", "2023/07/09"), vec![denial], &[], "", "").unwrap();
+        let (first, second) = (store.memory(&first).unwrap(), store.memory(&created[0]).unwrap());
+        assert_eq!(updated, std::slice::from_ref(&first.id));
+        assert_eq!((first.status.as_str(), second.status.as_str()), ("contested", "contested"));
+        assert_eq!((first.conflicts_with.clone(), second.conflicts_with.clone()), (vec![second.id.clone()], vec![first.id.clone()]));
+        assert_eq!(recall::conflicts(&store, &second), [("2023/07/05".to_string(), first.body.clone())]);
+        let found = recall::recall(
+            &store,
+            &Query { text: Some("coin toss problems"), project: Some("home"), limit: 5, mode: recall::Mode::Search, ..Default::default() },
+        )
+        .unwrap();
+        assert!(found.iter().any(|h| h.memory.id == first.id) && found.iter().any(|h| h.memory.id == second.id), "both sides recalled");
     }
 }

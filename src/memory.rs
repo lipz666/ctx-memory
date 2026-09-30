@@ -53,6 +53,10 @@ pub struct Memory {
     pub supersedes: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub superseded_by: Option<String>,
+    /// Memories that state the opposite and are not a change over time ("did 5 coin toss
+    /// problems" / "never did any"); both stay, marked contested.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub conflicts_with: Vec<String>,
     /// Session keys or event ids the memory was learned from.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub evidence: Vec<String>,
@@ -155,6 +159,7 @@ impl Memory {
             expires: None,
             supersedes: vec![],
             superseded_by: None,
+            conflicts_with: vec![],
             evidence: vec![],
             created_at: String::new(),
             updated_at: String::new(),
@@ -333,6 +338,7 @@ pub fn create(input: NewMemory, source: &str) -> Result<Memory> {
         expires: None,
         supersedes: vec![],
         superseded_by: None,
+        conflicts_with: vec![],
         evidence: vec![],
         created_at: now.clone(),
         updated_at: now,
@@ -463,6 +469,7 @@ fn from_v1(head: &serde_yaml::Value) -> Result<Memory> {
         expires: text("valid_to"),
         supersedes: list("supersedes"),
         superseded_by: text("superseded_by"),
+        conflicts_with: vec![],
         evidence: list("evidence_events"),
         created_at: text("created_at").unwrap_or_default(),
         updated_at: text("updated_at").unwrap_or_default(),

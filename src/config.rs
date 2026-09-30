@@ -138,6 +138,10 @@ pub struct ExtractionConfig {
     /// Show the extractor the most frequent known entities (resolving "my sister" to a
     /// name). Off: no measurable gain on the dev set for +20% extraction input.
     pub known_entities: bool,
+    /// After extraction, have the model judge new negative claims ("never did X") against
+    /// similar memories and link the pairs that cannot both be true (both kept, contested).
+    /// Costs one small call per session that has such a candidate pair.
+    pub contradictions: bool,
 }
 impl Default for ExtractionConfig {
     fn default() -> Self {
@@ -150,6 +154,7 @@ impl Default for ExtractionConfig {
             general_agents: vec!["hermes".into()],
             reflection: false,
             known_entities: false,
+            contradictions: true,
         }
     }
 }

@@ -71,6 +71,9 @@ pub struct Intent {
     /// "you recommended", "our previous chat", "remind me": the answer is a detail of the
     /// original conversation, so its excerpts matter most.
     pub conversation: bool,
+    /// "the order in which I brought up...": memories are listed in the order they were
+    /// mentioned (creation order), not by event date.
+    pub mention_order: bool,
 }
 
 const AGGREGATE_CUES: &[&str] = &[
@@ -82,6 +85,10 @@ const CONVERSATION_CUES: &[&str] = &[
     "last time we", "you told me", "you said", "you mentioned", "you recommended", "you suggested",
     "you provided", "you wrote", "you gave", "you listed", "you shared", "remind me", "we discussed",
     "we talked", "我们之前", "之前聊", "上次你", "你说过", "你提到", "你推荐", "你建议", "你给我", "提醒我",
+];
+const MENTION_ORDER_CUES: &[&str] = &[
+    "order in which i", "order i brought", "order i mentioned", "brought up", "i mentioned first",
+    "提起的顺序", "提到的顺序", "先后提到", "先提到",
 ];
 const TEMPORAL_CUES: &[&str] = &[
     "first", "firstly", "most recent", "most recently", "recently", "latest", "last time", "earliest", "before", "after", "how long", "ago",
@@ -106,6 +113,7 @@ pub fn intent(text: &str) -> Intent {
         aggregate: has(AGGREGATE_CUES),
         temporal: has(TEMPORAL_CUES),
         conversation: has(CONVERSATION_CUES),
+        mention_order: has(MENTION_ORDER_CUES),
     }
 }
 
@@ -309,9 +317,17 @@ pub fn pack(hits: Vec<Hit>, question: &str, budget: usize) -> Vec<Hit> {
             kept_memories.push(hit);
         }
     }
-    if intent.temporal {
-        let rules = kept_memories.iter().take_while(|h| h.channel == "rule").count();
-        kept_memories[rules..].sort_by_key(|h| date_key(&h.memory));
+    let rules = kept_memories.iter().take_while(|h| h.channel == "rule").count();
+    if intent.mention_order {
+        // Creation order is the order of mention: sessions are extracted in sequence.
+        kept_memories[rules..].sort_by(|a, b| a.memory.created_at.cmp(&b.memory.created_at));
+    } else if intent.temporal {
+        // Same-day memories keep the order they were mentioned in.
+        kept_memories[rules..].sort_by(|a, b| {
+            date_key(&a.memory)
+                .cmp(&date_key(&b.memory))
+                .then_with(|| a.memory.created_at.cmp(&b.memory.created_at))
+        });
     }
     kept_memories.extend(kept_excerpts);
     kept_memories
@@ -689,6 +705,34 @@ fn mentions(text: &str, entity: &str) -> bool {
     })
 }
 
+/// Memories that contradict this one: (date, content).
+pub fn conflicts(store: &Store, memory: &Memory) -> Vec<(String, String)> {
+    memory
+        .conflicts_with
+        .iter()
+        .filter_map(|id| store.memory(id))
+        .map(|m| {
+            let date = m
+                .event_at
+                .clone()
+                .or_else(|| m.observed_at.clone())
+                .unwrap_or_else(|| m.created_at.chars().take(10).collect());
+            (date, m.body)
+        })
+        .collect()
+}
+
+/// Position of a memory in the order its scope's memories were mentioned (1-based).
+pub fn mention_rank(store: &Store, memory: &Memory) -> usize {
+    store.with_index(|_, all| {
+        all.values()
+            .filter(|m| m.scope == memory.scope && !matches!(m.kind.as_str(), "digest" | "reflection"))
+            .filter(|m| m.created_at < memory.created_at)
+            .count()
+            + 1
+    })
+}
+
 /// Earlier versions of a memory (the chain it superseded), newest first:
 /// (date, content). At most `depth` entries.
 pub fn history(store: &Store, memory: &Memory, depth: usize) -> Vec<(String, String)> {
@@ -887,6 +931,29 @@ mod tests {
         assert!(intent("上次你推荐的那本书叫什么？").conversation);
         assert_eq!(intent("What's my sister's name?"), Intent::default());
         assert!(!intent("I'm counting on you").aggregate, "whole words only");
+        let order = intent("Can you list the order in which I brought up the parts of my budget app?");
+        assert!(order.mention_order && order.temporal);
+        assert!(intent("按我提到的顺序列出我问过的问题").mention_order);
+        assert!(!intent("When did I first bake bread?").mention_order);
+    }
+
+    #[test]
+    fn mention_order_questions_list_memories_as_they_were_mentioned() {
+        let hit = |id: &str, created: &str, date: Option<&str>| {
+            let mut memory = Memory::episode(id, Some("q"), format!("memory {id}"), None);
+            memory.kind = "fact".into();
+            memory.created_at = created.into();
+            memory.event_at = date.map(str::to_owned);
+            Hit { memory, channel: "search", score: 0.5, reason: String::new(), group: None }
+        };
+        let hits = vec![
+            hit("mem_c", "2024-03-01T10:00:02Z", Some("2024-01-01")),
+            hit("mem_a", "2024-03-01T10:00:00Z", Some("2024-06-01")),
+            hit("mem_b", "2024-03-01T10:00:01Z", Some("2024-06-01")),
+        ];
+        let ids = |packed: Vec<Hit>| packed.into_iter().map(|h| h.memory.id).collect::<Vec<_>>();
+        assert_eq!(ids(pack(hits.clone(), "In what order did I bring up these features? List the order in which I mentioned them.", 1000)), ["mem_a", "mem_b", "mem_c"]);
+        assert_eq!(ids(pack(hits, "Which did I do first?", 1000)), ["mem_c", "mem_a", "mem_b"], "event date, then mention order");
     }
 
     #[test]
