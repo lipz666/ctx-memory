@@ -109,12 +109,13 @@ def order_events(rubric, response):
 def make_system(name, workdir, budget):
     from adapters.ctx import Ctx
     prompt = BENCH / "prompts/ctx-general.txt"
-    if name == "ctx-beam":
-        return Ctx(workdir / "ctx-beam-home", name=name, prompt_file=prompt, episodes=5, budget=budget)
+    if name in ("ctx-beam", "ctx-beam-v2"):
+        # ctx-beam-v2: the same configuration on a newer engine (run with CTX_BIN), kept apart.
+        return Ctx(workdir / f"{name}-home", name=name, prompt_file=prompt, episodes=5, budget=budget)
     if name.startswith("ctx-beam-reanswer"):
         # Same memory store, answered again (e.g. with another --budget); no extraction.
-        return Ctx(workdir / f"{name}-home", name=name, prompt_file=prompt, episodes=5, budget=budget,
-                   reuse_from=workdir / "ctx-beam-home")
+        return Ctx(workdir / f"{name}-home", name=name, prompt_file=prompt, episodes=max(5, budget // 800),
+                   budget=budget, reuse_from=workdir / "ctx-beam-home")
     raise ValueError(name)
 
 
@@ -137,7 +138,8 @@ def run_conversation(system, conversation, budget, session_chars, rows_path, loc
                    "question": question["question"], "sessions": count, "ingest_seconds": round(ingest_seconds, 1)}
             try:
                 t = time.time()
-                retrieved = system.search(ns, question["question"], limit=20)
+                # Candidates scale with the budget so a larger budget can actually be filled.
+                retrieved = system.search(ns, question["question"], limit=max(20, budget // 100))
                 row["search_ms"] = round((time.time() - t) * 1000, 1)
                 kept = retrieved if system.unbounded else fit_budget(retrieved, budget)
                 context = "\n".join(f"- {item}" for item in kept) or "(no memories)"
