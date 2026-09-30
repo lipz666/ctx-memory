@@ -74,6 +74,9 @@ pub struct Intent {
     /// "the order in which I brought up...": memories are listed in the order they were
     /// mentioned (creation order), not by event date.
     pub mention_order: bool,
+    /// "summarize", "how has ... progressed", "walk me through": an account of the whole
+    /// history, so the conversation timeline helps.
+    pub overview: bool,
 }
 
 const AGGREGATE_CUES: &[&str] = &[
@@ -84,7 +87,13 @@ const CONVERSATION_CUES: &[&str] = &[
     "our previous", "previous chat", "previous conversation", "our conversation", "our last chat",
     "last time we", "you told me", "you said", "you mentioned", "you recommended", "you suggested",
     "you provided", "you wrote", "you gave", "you listed", "you shared", "remind me", "we discussed",
+    "you recommend", "you suggest", "you advise", "you advised", "you explain", "you explained", "you propose",
+    "you proposed", "you outline", "you outlined", "your recommendation", "your advice", "your suggestion",
     "we talked", "我们之前", "之前聊", "上次你", "你说过", "你提到", "你推荐", "你建议", "你给我", "提醒我",
+];
+const OVERVIEW_CUES: &[&str] = &[
+    "summarize", "summarise", "summary", "overview", "recap", "progressed", "progress", "walk me through",
+    "over time", "throughout", "across our conversations", "so far", "总结", "概括", "回顾", "进展", "梳理",
 ];
 const MENTION_ORDER_CUES: &[&str] = &[
     "order in which i", "order i brought", "order i mentioned", "brought up", "i mentioned first",
@@ -114,6 +123,7 @@ pub fn intent(text: &str) -> Intent {
         temporal: has(TEMPORAL_CUES),
         conversation: has(CONVERSATION_CUES),
         mention_order: has(MENTION_ORDER_CUES),
+        overview: has(OVERVIEW_CUES),
     }
 }
 
@@ -121,8 +131,30 @@ pub fn intent(text: &str) -> Intent {
 const AGGREGATE_DIGEST_BOOST: f64 = 0.15;
 /// Share of a packing budget kept for conversation excerpts once memories are placed.
 const EXCERPT_SHARE: f64 = 0.35;
-/// Characters of an excerpt kept around its best-matching sentence when packing.
+/// Share of a packing budget the conversation timeline may take.
+const TIMELINE_SHARE: f64 = 0.35;
+/// Characters of the timeline without a packing budget.
+const TIMELINE_CHARS: usize = 6000;
+/// Characters per timeline line: at most, and at least before lines are left out.
+const TIMELINE_LINE_MAX: usize = 400;
+const TIMELINE_LINE_MIN: usize = 140;
+/// Standing instructions attached to every search, most relevant first.
+const INSTRUCTIONS: usize = 3;
+
+/// Hits that stay at the top in this order: rules, the user's standing instructions,
+/// unresolved contradictions, the conversation timeline.
+fn leading(hit: &Hit) -> bool {
+    matches!(hit.channel, "rule" | "instruction" | "conflict" | "timeline")
+}
+
+/// Characters of an excerpt kept around its best-matching sentence when packing. Whole
+/// excerpts at large budgets were tried: fewer distinct turns fit, and the share of
+/// questions whose source turn was in the context fell (BEAM 100K, 8k budget: 89% to 83%).
 const EXCERPT_WINDOW: usize = 400;
+/// Aggregate questions ("how many times...", "in total") draw on many turns: more
+/// excerpts, each shorter, and a larger share of the budget.
+const AGGREGATE_EXCERPT_WINDOW: usize = 250;
+const AGGREGATE_EXCERPT_SHARE: f64 = 0.5;
 
 /// Hybrid candidates of `index` among the documents `allow` accepts, best first:
 /// (id, score, reason). Search mode uses the low floors and no relative cutoff; in
@@ -258,6 +290,17 @@ pub fn recall(store: &Store, query: &Query) -> Result<Vec<Hit>> {
     let mut hits = recall_ranked(store, query)?;
     if query.mode == Mode::Search {
         group_by_topic(store, &mut hits);
+        conflict_notes(store, &mut hits);
+        if let Some(text) = query.text {
+            let wanted = intent(text);
+            if wanted.overview || wanted.mention_order || wanted.aggregate {
+                let chars = query.budget.map_or(TIMELINE_CHARS, |b| (b as f64 * 4.0 * TIMELINE_SHARE) as usize);
+                if let Some(hit) = timeline(store, text, query.project, chars)? {
+                    let at = hits.iter().take_while(|h| leading(h)).count();
+                    hits.insert(at, hit);
+                }
+            }
+        }
         if let (Some(budget), Some(text)) = (query.budget, query.text) {
             hits = pack(hits, text, budget);
         }
@@ -281,20 +324,25 @@ pub fn pack(hits: Vec<Hit>, question: &str, budget: usize) -> Vec<Hit> {
     if intent.conversation {
         return pack_conversation(memories, excerpts, question, budget);
     }
+    let (window, share) = if intent.aggregate {
+        (AGGREGATE_EXCERPT_WINDOW, AGGREGATE_EXCERPT_SHARE)
+    } else {
+        (EXCERPT_WINDOW, EXCERPT_SHARE)
+    };
     let excerpts: Vec<Hit> = excerpts
         .into_iter()
         .map(|mut h| {
-            h.memory.body = trim_excerpt(&h.memory.body, question);
+            h.memory.body = trim_excerpt(&h.memory.body, question, window);
             h
         })
         .collect();
-    let memory_budget = if excerpts.is_empty() { budget } else { (budget as f64 * (1.0 - EXCERPT_SHARE)) as usize };
+    let memory_budget = if excerpts.is_empty() { budget } else { (budget as f64 * (1.0 - share)) as usize };
     let mut used = 0;
     let mut kept_memories = vec![];
     let mut left = vec![];
     for hit in memories.drain(..) {
         let cost = hit_tokens(&hit);
-        if hit.channel == "rule" || used + cost <= memory_budget {
+        if leading(&hit) || used + cost <= memory_budget {
             used += cost;
             kept_memories.push(hit);
         } else {
@@ -317,7 +365,7 @@ pub fn pack(hits: Vec<Hit>, question: &str, budget: usize) -> Vec<Hit> {
             kept_memories.push(hit);
         }
     }
-    let rules = kept_memories.iter().take_while(|h| h.channel == "rule").count();
+    let rules = kept_memories.iter().take_while(|h| leading(h)).count();
     if intent.mention_order {
         // Creation order is the order of mention: sessions are extracted in sequence.
         kept_memories[rules..].sort_by(|a, b| a.memory.created_at.cmp(&b.memory.created_at));
@@ -341,7 +389,7 @@ fn pack_conversation(memories: Vec<Hit>, excerpts: Vec<Hit>, question: &str, bud
     let mut kept = vec![];
     for mut hit in excerpts {
         if used + hit_tokens(&hit) > budget {
-            hit.memory.body = trim_excerpt(&hit.memory.body, question);
+            hit.memory.body = trim_excerpt(&hit.memory.body, question, EXCERPT_WINDOW);
         }
         let cost = hit_tokens(&hit);
         if used + cost <= budget {
@@ -352,7 +400,7 @@ fn pack_conversation(memories: Vec<Hit>, excerpts: Vec<Hit>, question: &str, bud
     let mut kept_memories = vec![];
     for hit in memories {
         let cost = hit_tokens(&hit);
-        if hit.channel == "rule" || used + cost <= budget {
+        if leading(&hit) || used + cost <= budget {
             used += cost;
             kept_memories.push(hit);
         }
@@ -362,9 +410,9 @@ fn pack_conversation(memories: Vec<Hit>, excerpts: Vec<Hit>, question: &str, bud
 }
 
 /// The first line of an excerpt (the user's message, shortened) and the window of about
-/// `EXCERPT_WINDOW` characters around the sentence sharing most words with the question.
-fn trim_excerpt(text: &str, question: &str) -> String {
-    if text.chars().count() <= EXCERPT_WINDOW + 200 {
+/// `window` characters around the sentence sharing most words with the question.
+fn trim_excerpt(text: &str, question: &str, window: usize) -> String {
+    if text.chars().count() <= window + 200 {
         return text.to_owned();
     }
     let (first, rest) = text.split_once('\n').unwrap_or((text, ""));
@@ -380,11 +428,11 @@ fn trim_excerpt(text: &str, question: &str) -> String {
     };
     let (mut start, mut end) = (best, best + 1);
     let len = |a: usize, b: usize| sentences[a..b].iter().map(|s| s.chars().count()).sum::<usize>();
-    while len(start, end) < EXCERPT_WINDOW && (start > 0 || end < sentences.len()) {
+    while len(start, end) < window && (start > 0 || end < sentences.len()) {
         if end < sentences.len() {
             end += 1;
         }
-        if len(start, end) < EXCERPT_WINDOW && start > 0 {
+        if len(start, end) < window && start > 0 {
             start -= 1;
         }
     }
@@ -504,11 +552,15 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
     let config = &store.config.recall;
     let mut hits = store.with_index(|index, all| {
         // Topic digests are long overviews for explicit questions, never injected.
+        // Questions about when or in what order things happened also need statements
+        // that were later changed ("the plan was April 20", moved since).
+        let past = query.mode == Mode::Search && text.as_deref().is_some_and(|t| intent(t).temporal);
         let usable = |m: &Memory| {
-            m.recallable()
+            (m.recallable() || (past && m.status == "superseded"))
                 && m.in_scope(query.project)
                 && !excluded(&m.id)
                 && (query.mode == Mode::Search || m.kind != "digest")
+                && m.kind != "summary"
         };
         let mut always = vec![];
         let mut found: HashMap<String, Hit> = HashMap::new();
@@ -584,6 +636,8 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                 let Some(memory) = all.get(&id).filter(|m| !m.always_on() && usable(m)) else {
                     continue;
                 };
+                // A statement that was later changed ranks a little below current ones.
+                let score = if memory.status == "superseded" { score * SUPERSEDED_DISCOUNT } else { score };
                 found.entry(id).or_insert(Hit {
                     memory: memory.clone(),
                     channel: "search",
@@ -592,22 +646,48 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                     group: None,
                 });
             }
-            // Entity index (search mode): every memory about a person, place or product
-            // the question names, even when its text says "the user's sister".
+            // Entity index (search mode): memories about a person, place or product the
+            // question names, even when their text says "the user's sister". They rank
+            // below text matches, and only a few of them: a name alone does not make a
+            // memory relevant ("the grocery budget Alexis and I agreed on").
             if search {
-                for memory in all.values().filter(|m| !m.always_on() && usable(m)) {
-                    let Some(entity) = memory.entities.iter().find(|e| mentions(text, e)) else {
-                        continue;
-                    };
-                    let hit = found.entry(memory.id.clone()).or_insert(Hit {
-                        memory: memory.clone(),
-                        channel: "search",
-                        score: ENTITY_SCORE,
-                        reason: String::new(),
-                        group: None,
-                    });
-                    hit.score = hit.score.max(ENTITY_SCORE) + ENTITY_BOOST;
-                    hit.reason.push_str(&format!(" entity:{entity}"));
+                let mut named: Vec<&Memory> = all
+                    .values()
+                    .filter(|m| !m.always_on() && usable(m) && !found.contains_key(&m.id))
+                    .filter(|m| m.entities.iter().any(|e| mentions(text, e)))
+                    .collect();
+                named.sort_by(|a, b| b.created_at.cmp(&a.created_at).then_with(|| a.id.cmp(&b.id)));
+                for memory in named.into_iter().take((query.limit / 4).max(3)) {
+                    let entity = memory.entities.iter().find(|e| mentions(text, e)).cloned().unwrap_or_default();
+                    found.insert(
+                        memory.id.clone(),
+                        Hit {
+                            memory: memory.clone(),
+                            channel: "search",
+                            score: ENTITY_SCORE,
+                            reason: format!("entity:{entity}"),
+                            group: None,
+                        },
+                    );
+                }
+                // The user's standing instructions ("always include a tree diagram when
+                // explaining probability"), the most relevant few, whatever their score.
+                let instructions = |id: &str| all.get(id).is_some_and(|m| m.kind == "instruction" && !m.always_on() && usable(m));
+                let ranked: Vec<(String, f32)> = match query_vector.as_deref() {
+                    Some(vector) => index.semantic_scores_where(vector, instructions),
+                    None => index.keyword_scores_where(text, instructions),
+                };
+                for (id, score) in ranked.into_iter().take(INSTRUCTIONS) {
+                    found.remove(&id);
+                    if let Some(memory) = all.get(&id) {
+                        always.push(Hit {
+                            memory: memory.clone(),
+                            channel: "instruction",
+                            score: 1.0,
+                            reason: format!("instruction:{score:.2}"),
+                            group: None,
+                        });
+                    }
                 }
             }
         }
@@ -637,7 +717,10 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                 .then_with(|| a.memory.id.cmp(&b.memory.id))
         });
         hits.truncate(if aggregate { query.limit * 3 / 2 } else { query.limit });
-        always.sort_by(|a, b| a.memory.id.cmp(&b.memory.id));
+        // Rules first (by id), then instructions (most relevant first).
+        always.sort_by(|a, b| (a.channel != "rule").cmp(&(b.channel != "rule")).then_with(|| {
+            if a.channel == "rule" { a.memory.id.cmp(&b.memory.id) } else { std::cmp::Ordering::Equal }
+        }));
         always.extend(hits);
         always
     });
@@ -645,15 +728,19 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
         && query.episodes > 0
         && let Some(text) = text.as_deref()
     {
-        let always = hits.iter().take_while(|h| h.channel == "rule").count();
+        let always = hits.iter().take_while(|h| leading(h)).count();
         let mut ranked = hits.split_off(always);
-        ranked.extend(episode_hits(
+        let excerpts = episode_hits(
             store,
             text,
             query_vector.as_deref(),
             query.project,
-            query.episodes,
-        )?);
+            // Aggregate questions draw on many turns.
+            if intent(text).aggregate { query.episodes * 2 } else { query.episodes },
+        )?;
+        let sources = source_excerpts(store, &ranked, &excerpts, query.project, query.episodes)?;
+        ranked.extend(excerpts);
+        ranked.extend(sources);
         ranked.sort_by(|a, b| {
             b.score
                 .total_cmp(&a.score)
@@ -687,7 +774,148 @@ fn topics(vectors: &[Option<Vec<f32>>]) -> Vec<Vec<usize>> {
 /// Base score of a memory found only through the entity index, and the boost for any
 /// memory whose entities the question names.
 const ENTITY_SCORE: f64 = 0.4;
-const ENTITY_BOOST: f64 = 0.1;
+const SUPERSEDED_DISCOUNT: f32 = 0.9;
+/// A memory's source excerpt must be at least this similar to it, and ranks just below it.
+const SOURCE_SIMILARITY: f32 = 0.55;
+const SOURCE_DISCOUNT: f64 = 0.95;
+
+/// The conversation excerpts that the best memory hits were distilled from (the most
+/// similar excerpt in a memory's session): a question phrased unlike the original turn
+/// often matches the distilled memory ("the assistant recommended...") but not the long
+/// reply it came from. At most `limit`, none already among `found` or from the same turn.
+fn source_excerpts(store: &Store, memories: &[Hit], found: &[Hit], project: Option<&str>, limit: usize) -> Result<Vec<Hit>> {
+    let mut seen: HashSet<String> = found.iter().map(|h| h.memory.id.clone()).collect();
+    let mut turns: HashSet<String> = found.iter().map(|h| crate::episode::turn_key(&h.memory.body)).collect();
+    let mut out = vec![];
+    for hit in memories.iter().filter(|h| h.channel == "search" && !h.memory.derived() && !h.memory.evidence.is_empty()) {
+        if out.len() == limit {
+            break;
+        }
+        let Some(vector) = store.with_index(|index, _| index.vector(&hit.memory.id).cloned()) else { continue };
+        let best = store.with_episodes(|episodes| {
+            episodes
+                .meta
+                .iter()
+                .filter(|(id, meta)| hit.memory.evidence.contains(&meta.session) && episodes.in_scope(id, project))
+                .filter_map(|(id, meta)| {
+                    episodes.index.vector(id).map(|v| (id.clone(), crate::embed::dot(&vector, v), meta.observed_at.clone()))
+                })
+                .max_by(|a, b| a.1.total_cmp(&b.1).then_with(|| b.0.cmp(&a.0)))
+        });
+        let Some((id, similarity, observed_at)) = best else { continue };
+        if similarity < SOURCE_SIMILARITY || !seen.insert(id.clone()) {
+            continue;
+        }
+        let Some(text) = store.episode_text(&id)? else { continue };
+        if !turns.insert(crate::episode::turn_key(&text)) {
+            continue;
+        }
+        out.push(Hit {
+            memory: Memory::episode(&id, project, text, observed_at),
+            channel: "episode",
+            score: hit.score * SOURCE_DISCOUNT,
+            reason: format!("source of {} ({similarity:.2})", hit.memory.id),
+            group: None,
+        });
+    }
+    Ok(out)
+}
+/// Contradictions shown per search.
+const CONFLICT_NOTES: usize = 3;
+
+/// Replace the two sides of an unresolved contradiction among the hits with one note that
+/// states both (a reader skims past a remark at the end of one memory).
+fn conflict_notes(store: &Store, hits: &mut Vec<Hit>) {
+    let mut notes: Vec<Hit> = vec![];
+    let mut covered: HashSet<String> = HashSet::new();
+    for hit in hits.iter().filter(|h| h.memory.status == "contested" && !leading(h)) {
+        if notes.len() == CONFLICT_NOTES || covered.contains(&hit.memory.id) {
+            continue;
+        }
+        let Some(other) = hit.memory.conflicts_with.iter().find_map(|id| store.memory(id)) else { continue };
+        let said = |m: &Memory| m.observed_at.clone().unwrap_or_else(|| m.created_at.chars().take(10).collect());
+        let (first, second) = if (said(&other), &other.created_at) < (said(&hit.memory), &hit.memory.created_at) {
+            (&other, &hit.memory)
+        } else {
+            (&hit.memory, &other)
+        };
+        let text = format!(
+            "Unresolved contradiction in what the user has said: on {} — \"{}\"; on {} — \"{}\". These cannot both be true, and the user has not said which one is correct.",
+            said(first),
+            first.body,
+            said(second),
+            second.body
+        );
+        let mut memory = Memory::episode(&format!("conflict:{}:{}", first.id, second.id), Some(&hit.memory.scope), text, None);
+        memory.kind = "conflict".into();
+        memory.title = "Unresolved contradiction".into();
+        covered.extend([first.id.clone(), second.id.clone()]);
+        notes.push(Hit { memory, channel: "conflict", score: 1.0, reason: "conflict".into(), group: None });
+    }
+    if notes.is_empty() {
+        return;
+    }
+    hits.retain(|h| !covered.contains(&h.memory.id));
+    let at = hits.iter().take_while(|h| matches!(h.channel, "rule" | "instruction")).count();
+    hits.splice(at..at, notes);
+}
+
+/// The conversation timeline: one line per session summary in the scope, oldest first,
+/// within `chars`. When every line cannot keep TIMELINE_LINE_MIN characters, the lines
+/// most relevant to `text` are kept (still in order).
+fn timeline(store: &Store, text: &str, project: Option<&str>, chars: usize) -> Result<Option<Hit>> {
+    let vector = match store.embedder.get() {
+        Some(embedder) => Some(embedder.embed_query(text)?),
+        None => None,
+    };
+    let lines = store.with_index(|index, all| {
+        let mut summaries: Vec<&Memory> = all
+            .values()
+            .filter(|m| m.kind == "summary" && m.recallable() && m.in_scope(project))
+            .collect();
+        if summaries.is_empty() {
+            return vec![];
+        }
+        summaries.sort_by(|a, b| a.created_at.cmp(&b.created_at).then_with(|| a.id.cmp(&b.id)));
+        let per_line = (chars / summaries.len()).min(TIMELINE_LINE_MAX);
+        let (keep, per_line): (HashSet<String>, usize) = if per_line >= TIMELINE_LINE_MIN {
+            (summaries.iter().map(|m| m.id.clone()).collect(), per_line)
+        } else {
+            let allow = |id: &str| all.get(id).is_some_and(|m| m.kind == "summary" && m.recallable() && m.in_scope(project));
+            let ranked = match vector.as_deref() {
+                Some(v) => index.semantic_scores_where(v, allow),
+                None => index.keyword_scores_where(text, allow),
+            };
+            let count = (chars / TIMELINE_LINE_MIN).max(1);
+            (ranked.into_iter().take(count).map(|(id, _)| id).collect(), TIMELINE_LINE_MIN)
+        };
+        summaries
+            .into_iter()
+            .enumerate()
+            .filter(|(_, m)| keep.contains(&m.id))
+            .map(|(i, m)| {
+                let date = m.observed_at.clone().unwrap_or_else(|| m.created_at.chars().take(10).collect());
+                let mut body: String = m.body.chars().take(per_line).collect();
+                if body.len() < m.body.len() {
+                    body.push('…');
+                }
+                format!("- #{} [{date}] {body}", i + 1)
+            })
+            .collect::<Vec<_>>()
+    });
+    if lines.is_empty() {
+        return Ok(None);
+    }
+    let mut memory = Memory::episode(
+        "timeline",
+        project,
+        format!("Timeline of our conversations (session number, date, what was discussed; oldest first):\n{}", lines.join("\n")),
+        None,
+    );
+    memory.kind = "timeline".into();
+    memory.title = "Conversation timeline".into();
+    Ok(Some(Hit { memory, channel: "timeline", score: 1.0, reason: "timeline".into(), group: None }))
+}
 
 /// Whether `text` names `entity` as a whole word (case-insensitive; CJK names by
 /// substring). Latin names shorter than 3 characters are ignored.
@@ -726,7 +954,7 @@ pub fn conflicts(store: &Store, memory: &Memory) -> Vec<(String, String)> {
 pub fn mention_rank(store: &Store, memory: &Memory) -> usize {
     store.with_index(|_, all| {
         all.values()
-            .filter(|m| m.scope == memory.scope && !matches!(m.kind.as_str(), "digest" | "reflection"))
+            .filter(|m| m.scope == memory.scope && !m.derived())
             .filter(|m| m.created_at < memory.created_at)
             .count()
             + 1
@@ -773,7 +1001,7 @@ fn date_key(memory: &Memory) -> String {
 /// chronological order, so a reader sees how a fact developed and which value is the
 /// latest. Always-on rules stay first; hits without a vector form their own group.
 fn group_by_topic(store: &Store, hits: &mut Vec<Hit>) {
-    let always = hits.iter().take_while(|h| h.channel == "rule").count();
+    let always = hits.iter().take_while(|h| leading(h)).count();
     let ranked = hits.split_off(always);
     let vectors: Vec<Option<Vec<f32>>> = ranked
         .iter()
@@ -839,6 +1067,39 @@ mod tests {
             )
             .unwrap()
             .id
+    }
+
+    #[test]
+    fn timeline_instructions_and_a_few_entity_hits() {
+        let (_dir, store) = store();
+        for (i, text) in ["Set up the Flask project and the database schema.", "Implemented transaction CRUD with error handling.", "Deployed the app to Render with Gunicorn."].iter().enumerate() {
+            let id = add(&store, text, "summary", "q", None);
+            let mut memory = store.memory(&id).unwrap();
+            memory.observed_at = Some(format!("2024/0{}/01", i + 1));
+            memory.created_at = format!("2024-0{}-01T00:00:00Z", i + 1);
+            store.save_memory(&memory, "date").unwrap();
+        }
+        let tip = add(&store, "When explaining probability, always include a tree diagram.", "instruction", "q", None);
+        let grocery = add(&store, "The grocery budget was raised to $550 per month.", "fact", "q", None);
+        for i in 0..8 {
+            let id = add(&store, &format!("Unrelated plan number {i} for the weekend."), "fact", "q", None);
+            let mut memory = store.memory(&id).unwrap();
+            memory.entities = vec!["Alexis".into()];
+            store.save_memory(&memory, "entities").unwrap();
+        }
+        let search = |text: &str, budget: Option<usize>| {
+            recall(&store, &Query { text: Some(text), project: Some("q"), limit: 8, mode: Mode::Search, budget, ..Default::default() }).unwrap()
+        };
+        let hits = search("Summarize how my Flask app project progressed", Some(2000));
+        let timeline = hits.iter().find(|h| h.channel == "timeline").expect("timeline");
+        let body = &timeline.memory.body;
+        assert!(body.contains("- #1 [2024/01/01] Set up the Flask") && body.find("#1").unwrap() < body.find("#3 [2024/03/01] Deployed").unwrap(), "{body}");
+        assert!(search("Flask project", None).iter().all(|h| h.memory.kind != "summary" && h.channel != "timeline"), "summaries only in the timeline");
+        let hits = search("What is the probability of drawing a red card?", None);
+        assert_eq!((hits[0].channel, hits[0].memory.id.as_str()), ("instruction", tip.as_str()));
+        let hits = search("What grocery budget have Alexis and I agreed on?", None);
+        assert_eq!(hits[0].memory.id, grocery);
+        assert!(hits.iter().filter(|h| h.reason.starts_with("entity:")).count() <= 3, "a few entity-only hits");
     }
 
     #[test]
@@ -935,6 +1196,8 @@ mod tests {
         assert!(order.mention_order && order.temporal);
         assert!(intent("按我提到的顺序列出我问过的问题").mention_order);
         assert!(!intent("When did I first bake bread?").mention_order);
+        assert!(intent("Can you summarize how my weather app project has progressed?").overview);
+        assert!(!intent("What is my sister's name?").overview);
     }
 
     #[test]

@@ -10,15 +10,17 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fs, path::Path};
 
-pub const TYPES: [&str; 8] = [
+pub const TYPES: [&str; 10] = [
     "rule",
     "fact",
     "preference",
+    "instruction",
     "lesson",
     "skill",
     "intent",
     "digest",
     "reflection",
+    "summary",
 ];
 pub const TRIGGER_KINDS: [&str; 4] = ["keyword", "error", "tool", "file"];
 
@@ -71,6 +73,11 @@ pub struct Memory {
     /// "2023-05", "2023-05-20"), if known; `observed_at` is when it was said.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub event_at: Option<String>,
+    /// When the user brought this up again in later sessions (the first time is
+    /// `observed_at`): "how many times did I mention..." needs the repeats that
+    /// deduplication would otherwise drop.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mentioned_at: Vec<String>,
     /// Short topic labels shared by related memories: the kind of thing
     /// ("workshops") and optionally its subject ("marketing"); used for topic digests.
     /// A digest carries the one topic it summarizes.
@@ -165,6 +172,7 @@ impl Memory {
             updated_at: String::new(),
             observed_at,
             event_at: None,
+            mentioned_at: vec![],
             topics: vec![],
             entities: vec![],
             body: text,
@@ -175,6 +183,12 @@ impl Memory {
     }
     pub fn in_scope(&self, project: Option<&str>) -> bool {
         self.scope == "global" || project.is_some_and(|p| p.eq_ignore_ascii_case(&self.scope))
+    }
+    /// Written by ctx from other memories or a whole session (topic digests, reflections,
+    /// session summaries), not a statement of its own: never deduplicated, checked for
+    /// contradictions or counted as a mention.
+    pub fn derived(&self) -> bool {
+        matches!(self.kind.as_str(), "digest" | "reflection" | "summary")
     }
     pub fn recallable(&self) -> bool {
         matches!(self.status.as_str(), "active" | "contested")
@@ -344,6 +358,7 @@ pub fn create(input: NewMemory, source: &str) -> Result<Memory> {
         updated_at: now,
         observed_at: None,
         event_at: None,
+        mentioned_at: vec![],
         topics: vec![],
         entities: vec![],
         body: content,
@@ -475,6 +490,7 @@ fn from_v1(head: &serde_yaml::Value) -> Result<Memory> {
         updated_at: text("updated_at").unwrap_or_default(),
         observed_at: None,
         event_at: None,
+        mentioned_at: vec![],
         topics: vec![],
         entities: vec![],
         body: String::new(),

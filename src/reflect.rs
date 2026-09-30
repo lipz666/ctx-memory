@@ -43,7 +43,7 @@ struct Reflection {
 
 /// Memories a reflection summarizes: active, not digests or reflections themselves.
 fn member(memory: &Memory) -> bool {
-    memory.recallable() && !matches!(memory.kind.as_str(), "digest" | "reflection")
+    memory.recallable() && !memory.derived()
 }
 
 /// The topics among `touched` memories that crossed a size threshold since their last

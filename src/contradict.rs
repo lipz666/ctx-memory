@@ -1,10 +1,13 @@
-//! Contradiction check: "I've never written a Flask route" and "I tested the homepage
-//! route" cannot both be true. The extraction model rarely flags such pairs on its own, so
-//! after each session the new memories that make a negative claim ("never", "haven't") are
-//! compared with similar memories, and new memories with similar negative claims; one model
-//! call judges the candidate pairs. Pairs that conflict are linked both ways and marked
-//! contested: neither side is dropped, so a reader can say that the user said both.
+//! Consistency check after extraction. The extraction model rarely relates a new statement
+//! to an older one on its own, so each new memory is compared with similar memories when
+//! either side makes a negative claim ("never", "haven't") or both give different numbers,
+//! and one model call per session judges the candidate pairs:
+//! - a conflict ("I've never written a Flask route" / "I tested the homepage route"): both
+//!   are kept, linked both ways and marked contested, so a reader can say the user said both;
+//! - an update ("grocery budget $500" / later "raised to $550"): the earlier one is
+//!   superseded by the later one and kept as its history.
 use crate::{
+    extract::{numbers, strip_dates},
     llm,
     memory::Memory,
     recall::{self, Query},
@@ -21,21 +24,36 @@ const NEGATION_CUES: &[&str] = &[
     "don't have", "do not have", "no experience", "从未", "从没", "从来没", "未曾", "还没", "没有",
 ];
 /// Similar memories compared with each new memory.
-const NEIGHBOURS: usize = 4;
+const NEIGHBOURS: usize = 6;
 /// Pairs judged per session (one model call).
-const MAX_PAIRS: usize = 12;
+const MAX_PAIRS: usize = 20;
+/// Pairs that only differ in their numbers must be at least this similar.
+const UPDATE_SIMILARITY: f64 = 0.6;
 
 const PROMPT: &str = "You check a person's memory for contradictions. Each pair holds two statements recorded from the user's conversations, each with the date it was said. A pair CONFLICTS when both cannot be true about the same thing: one says the user never did, has not done or does not have something, and the other says they did or have it (\"I've never written Flask routes in this project\" vs \"the user tested the homepage route\"; \"never completed a coin toss problem\" vs \"completed 5 coin toss problems\").
 It does NOT conflict when:
 - the negative statement was said BEFORE the other one and the later one reports doing it for the first time (progress: \"never deployed\" in March, \"deployed to Render\" in May);
 - the change is described as such (\"no longer\", \"switched to\", \"stopped\");
 - they are about different things, projects or people.
-Return JSON only: {\"conflicts\":[pair numbers]}. Do not wrap the JSON in Markdown.";
+A pair is an UPDATE when both give a value of the same thing (a budget, a count, a version, a setting, a date) and the second statement changes it to a new current value (\"grocery budget $500 per month\" then \"grocery budget raised to $550\"). Separate events with different numbers (two different purchases, two different problems solved) are neither.
+Return JSON only: {\"conflicts\":[pair numbers],\"updates\":[pair numbers]}. Do not wrap the JSON in Markdown.";
 
 #[derive(Deserialize)]
 struct Output {
     #[serde(default)]
     conflicts: Vec<usize>,
+    #[serde(default)]
+    updates: Vec<usize>,
+}
+
+/// Whether two statements give different numbers (dates aside).
+fn numbers_differ(a: &str, b: &str) -> bool {
+    let (mut a, mut b) = (numbers(&strip_dates(a)), numbers(&strip_dates(b)));
+    a.sort();
+    a.dedup();
+    b.sort();
+    b.dedup();
+    !a.is_empty() && !b.is_empty() && a != b
 }
 
 /// Whether a statement makes a negative claim (whole words for Latin text).
@@ -54,7 +72,7 @@ pub fn negative(text: &str) -> bool {
 }
 
 fn eligible(memory: &Memory) -> bool {
-    memory.recallable() && !matches!(memory.kind.as_str(), "rule" | "digest" | "reflection" | "episode")
+    memory.recallable() && !memory.derived() && !matches!(memory.kind.as_str(), "rule" | "episode" | "timeline")
 }
 
 /// When a statement was said (else when it was recorded).
@@ -66,7 +84,8 @@ fn said(memory: &Memory) -> String {
 }
 
 /// Candidate pairs for the new memories `created`: a new memory and a similar one where
-/// at least one side makes a negative claim, most similar first, without repeats.
+/// at least one side makes a negative claim or (very similar) the numbers differ, most
+/// similar first, without repeats.
 fn candidates(store: &Store, project: Option<&str>, created: &[String]) -> Result<Vec<(Memory, Memory)>> {
     let mut pairs: Vec<(f64, Memory, Memory)> = vec![];
     for id in created {
@@ -75,9 +94,15 @@ fn candidates(store: &Store, project: Option<&str>, created: &[String]) -> Resul
             store,
             &Query { text: Some(&new.body), project, limit: NEIGHBOURS + 1, mode: recall::Mode::Search, ..Default::default() },
         )?;
-        for hit in hits.into_iter().filter(|h| h.memory.id != new.id && eligible(&h.memory)).take(NEIGHBOURS) {
+        for hit in hits
+            .into_iter()
+            .filter(|h| h.channel == "search" && h.memory.id != new.id && eligible(&h.memory))
+            .take(NEIGHBOURS)
+        {
             let other = hit.memory;
-            if !(negative(&new.body) || negative(&other.body)) || new.conflicts_with.contains(&other.id) {
+            let negation = negative(&new.body) || negative(&other.body);
+            let changed = hit.score >= UPDATE_SIMILARITY && numbers_differ(&new.body, &other.body);
+            if !(negation || changed) || new.conflicts_with.contains(&other.id) {
                 continue;
             }
             if pairs.iter().any(|(_, a, b)| (a.id == other.id && b.id == new.id) || (a.id == new.id && b.id == other.id)) {
@@ -95,8 +120,8 @@ fn candidates(store: &Store, project: Option<&str>, created: &[String]) -> Resul
         .collect())
 }
 
-/// Link the conflicting pairs among `created` and similar memories; returns the ids of
-/// the memories marked contested.
+/// Judge the candidate pairs for `created`: link conflicts (contested) and supersede
+/// updated values; returns the ids of the memories changed.
 pub async fn check(store: &Store, project: Option<&str>, created: &[String]) -> Result<Vec<String>> {
     let pairs = candidates(store, project, created)?;
     if pairs.is_empty() {
@@ -131,6 +156,31 @@ pub async fn check(store: &Store, project: Option<&str>, created: &[String]) -> 
         store.save_memory(&b, &format!("{} conflicts with {}", b.id, a.id))?;
         contested.extend([a.id, b.id]);
     }
+    for number in output.updates {
+        let Some((old, new)) = pairs.get(number.wrapping_sub(1)) else { continue };
+        let (Some(mut old), Some(mut new)) = (store.memory(&old.id), store.memory(&new.id)) else { continue };
+        // The earlier statement is replaced; one the user wrote, or already replaced or
+        // contested, is left alone.
+        if old.source == "user"
+            || old.status != "active"
+            || new.status != "active"
+            || !new.conflicts_with.is_empty()
+            || negative(&old.body)
+            || negative(&new.body)
+        {
+            continue;
+        }
+        old.status = "superseded".into();
+        old.superseded_by = Some(new.id.clone());
+        old.updated_at = Utc::now().to_rfc3339();
+        if !new.supersedes.contains(&old.id) {
+            new.supersedes.insert(0, old.id.clone());
+        }
+        new.updated_at = Utc::now().to_rfc3339();
+        store.save_memory(&new, &format!("{} updates {}", new.id, old.id))?;
+        store.save_memory(&old, &format!("{} superseded by {}", old.id, new.id))?;
+        contested.extend([old.id, new.id]);
+    }
     contested.sort();
     contested.dedup();
     Ok(contested)
@@ -147,5 +197,8 @@ mod tests {
         assert!(negative("用户从未部署过这个应用"));
         assert!(!negative("The user completed 5 coin toss problems."));
         assert!(!negative("The user wrote a note about nevertheless"), "whole words only");
+        assert!(numbers_differ("Grocery budget is $500 per month.", "On 2024-09-15 the grocery budget rose to $550 per month."));
+        assert!(!numbers_differ("On 2024-09-01 the budget was $500.", "The budget is $500 as of 2024-12-01."), "dates aside");
+        assert!(!numbers_differ("The user likes jazz.", "The user has 3 cats."), "both need numbers");
     }
 }

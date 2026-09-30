@@ -111,12 +111,20 @@ def render(hit):
     """One retrieved item as the answer model sees it: when it was said, the content, when
     the event happened, and earlier values of a fact that changed."""
     label = {"preference": "(the user's preference) ",
+             "instruction": "(the user's standing instruction for the assistant; apply it to this answer) ",
              "reflection": "(summary of what the user has shared about this topic) "}.get(hit.get("type"), "")
+    if hit.get("type") in ("timeline", "conflict", "brief"):
+        return hit["content"]
+    if hit.get("status") == "superseded":
+        label = "(earlier statement, changed later) " + label
     text = f"[{hit.get('observed_at') or hit.get('created_at') or ''}] {label}{hit['content']}"
     if hit.get("event_at"):
         text += f" (event date: {hit['event_at']})"
     if hit.get("mentioned"):
         text = text.replace("] ", f", mention #{hit['mentioned']}] ", 1)
+    again = hit.get("mentioned_at") or []
+    if again:
+        text += f" (the user brought this up {len(again) + 1} times: first as dated, again on {', '.join(again)})"
     conflicts = hit.get("conflicts") or []
     if conflicts:
         text += " (CONFLICTS with what the user also said: " + "; ".join(f"[{c['date']}] {c['content']}" for c in conflicts) + ")"
@@ -133,7 +141,7 @@ def namespace(ns):
 class Ctx(MemorySystem):
     """ctx with its built-in extraction prompt (tuned for coding work), or a variant prompt."""
 
-    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None):
+    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None, brief=False):
         self.name = name
         self.failed_sessions = []
         self.mode = mode
@@ -142,6 +150,8 @@ class Ctx(MemorySystem):
         # Ask ctx to pack results for the reader (memories first, excerpts trimmed); a
         # margin below the harness budget covers the rendering added here.
         self.budget = budget
+        # One model call turns a wide retrieval into a brief for the question.
+        self.brief = brief
         # Reuse another variant's memory store (same memories, no new extraction) and only
         # build the conversation excerpts; ingestion then does nothing.
         self.reuse_from = reuse_from
@@ -205,6 +215,8 @@ class Ctx(MemorySystem):
             args["now"] = now
         if self.budget:
             args["budget"] = int(self.budget * 0.9)
+        if self.brief:
+            args["brief"] = "true"
         hits = self.service.request(f"/api/v1/recall?{urllib.parse.urlencode(args)}")
         return [(render(h), h["score"]) for h in hits]
 

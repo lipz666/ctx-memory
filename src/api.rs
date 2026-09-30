@@ -210,6 +210,9 @@ pub struct RecallParams {
     /// Search mode: pack the result for a reader into this many tokens (memories first,
     /// excerpts cut to their relevant part).
     budget: Option<usize>,
+    /// Search mode: put a brief written for the question from a wide retrieval (one model
+    /// call) before the hits; `budget` covers the brief (at most 40% of it) and the hits.
+    brief: Option<bool>,
 }
 pub async fn recall(
     State(app): State<App>,
@@ -229,6 +232,14 @@ pub async fn recall(
         None
     };
     let store = app.store.clone();
+    let brief = search && params.brief == Some(true);
+    let (question, today, brief_tokens) = (params.q.clone(), params.now.clone(), params.budget);
+    let mut params = params;
+    if brief {
+        params.limit = Some(crate::brief::BRIEF_LIMIT);
+        params.episodes = Some(crate::brief::BRIEF_EPISODES);
+        params.budget = Some(crate::brief::BRIEF_GATHER_TOKENS);
+    }
     let hits = tokio::task::spawn_blocking(move || {
         let query = Query {
                 text: Some(&params.q),
@@ -254,7 +265,25 @@ pub async fn recall(
     .await
     .map_err(api_error)?
     .map_err(api_error)?;
-    Ok(axum::Json(json!(hits.iter().map(|h| json!({"id":h.memory.id,"title":h.memory.title,"content":h.memory.body,"type":h.memory.kind,"scope":h.memory.scope,"score":h.score,"channel":h.channel,"group":h.group,"observed_at":h.memory.observed_at,"event_at":h.memory.event_at,"topics":h.memory.topics,"history":recall::history(&app.store, &h.memory, 3).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"conflicts":recall::conflicts(&app.store, &h.memory).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"mentioned":if h.channel == "episode" || matches!(h.memory.kind.as_str(), "digest" | "reflection") { serde_json::Value::Null } else { json!(recall::mention_rank(&app.store, &h.memory)) },"status":h.memory.status,"created_at":h.memory.created_at})).collect::<Vec<_>>())))
+    // The brief comes first, then the evidence it was written from, packed into the rest
+    // of the budget (a brief can miss a detail). Without a brief (the model call failed)
+    // the hits are returned packed as usual.
+    let mut lead = vec![];
+    let hits = if brief {
+        let total = brief_tokens.unwrap_or(crate::brief::BRIEF_TOKENS * 5 / 2);
+        let tokens = (total * 2 / 5).min(crate::brief::BRIEF_TOKENS);
+        match crate::brief::brief(&app.store, &question, today.as_deref(), &hits, tokens).await {
+            Ok(text) => {
+                let used = text.chars().count() / 4 + 12;
+                lead.push(json!({"id":"brief","title":"Memory brief","content":text,"type":"brief","channel":"brief","score":1.0,"sources":hits.len()}));
+                recall::pack(hits, &question, total.saturating_sub(used))
+            }
+            Err(_) => recall::pack(hits, &question, total),
+        }
+    } else {
+        hits
+    };
+    Ok(axum::Json(json!(lead.into_iter().chain(hits.iter().map(|h| json!({"id":h.memory.id,"title":h.memory.title,"content":h.memory.body,"type":h.memory.kind,"scope":h.memory.scope,"score":h.score,"channel":h.channel,"group":h.group,"observed_at":h.memory.observed_at,"event_at":h.memory.event_at,"topics":h.memory.topics,"history":recall::history(&app.store, &h.memory, 3).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"conflicts":recall::conflicts(&app.store, &h.memory).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"mentioned":if matches!(h.channel, "episode" | "timeline" | "conflict") || h.memory.derived() { serde_json::Value::Null } else { json!(recall::mention_rank(&app.store, &h.memory)) },"status":h.memory.status,"mentioned_at":h.memory.mentioned_at,"created_at":h.memory.created_at}))).collect::<Vec<_>>())))
 }
 pub async fn step(State(app): State<App>, Path(id): Path<String>, headers: HeaderMap) -> ApiResult {
     require(&headers, &app.store)?;

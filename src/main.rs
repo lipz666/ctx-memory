@@ -1,5 +1,6 @@
 mod adapters;
 mod api;
+mod brief;
 mod config;
 mod consolidation;
 mod contradict;

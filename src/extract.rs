@@ -30,10 +30,14 @@ const MAX_PROPOSALS: usize = 40;
 
 #[derive(Deserialize)]
 struct Output {
+    /// Parsed one by one: a malformed proposal is dropped, not the whole reply.
     #[serde(default)]
-    memories: Vec<Proposal>,
+    memories: Vec<Value>,
     #[serde(default)]
     skip_reason: Option<String>,
+    /// What the user brought up in this session and what the assistant gave, in order.
+    #[serde(default)]
+    session_summary: Option<String>,
 }
 #[derive(Deserialize, Default)]
 struct Proposal {
@@ -41,12 +45,13 @@ struct Proposal {
     action: String,
     #[serde(default)]
     id: Option<String>,
-    #[serde(rename = "type")]
+    #[serde(default, rename = "type")]
     kind: String,
     #[serde(default)]
     scope: String,
     #[serde(default)]
     title: String,
+    #[serde(default)]
     content: String,
     #[serde(default)]
     evidence: String,
@@ -212,7 +217,7 @@ pub fn rebuild_digests(store: &Store) -> Result<usize> {
     let ids: Vec<String> = store
         .memories()
         .into_iter()
-        .filter(|m| m.recallable() && !matches!(m.kind.as_str(), "digest" | "reflection") && !m.topics.is_empty())
+        .filter(|m| m.recallable() && !m.derived() && !m.topics.is_empty())
         .map(|m| m.id)
         .collect();
     Ok(refresh_digests(store, ids.iter())?.len())
@@ -273,7 +278,7 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
                 ..Default::default()
             },
         )? {
-            if !matches!(hit.memory.kind.as_str(), "digest" | "reflection")
+            if !hit.memory.derived()
                 && related.get(&hit.memory.id).is_none_or(|h| h.score < hit.score)
             {
                 related.insert(hit.memory.id.clone(), hit);
@@ -358,12 +363,16 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
     let result = apply(
         store,
         session,
-        output.memories,
+        proposals(output.memories),
         &transcript.user_texts,
         &transcript.digest,
         &input,
     )?;
     let digests = refresh_digests(store, result.0.iter().chain(&result.1))?;
+    let summary = match output.session_summary.as_deref().map(str::trim) {
+        Some(text) if text.chars().count() >= 20 => Some(save_summary(store, session, text)?),
+        _ => None,
+    };
     // A failed check never fails the extraction.
     let contested = if store.config.extraction.contradictions {
         crate::contradict::check(store, project, &result.0)
@@ -383,8 +392,65 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
     };
     store.finish_session(&session.key, "done", None)?;
     Ok(
-        json!({"session":session.key,"created":result.0,"updated":result.1,"skipped":result.2,"skip_reason":output.skip_reason,"episodes":episodes,"digests":digests,"contested":contested,"reflections":reflections}),
+        json!({"session":session.key,"created":result.0,"updated":result.1,"skipped":result.2,"skip_reason":output.skip_reason,"episodes":episodes,"digests":digests,"summary":summary,"contested":contested,"reflections":reflections}),
     )
+}
+
+/// Record that `session` brought the memory `id` up again (once per session); false when
+/// the memory does not exist, is not a statement of its own or this session created it.
+fn record_mention(store: &Store, id: &str, session: &SessionRow) -> Result<bool> {
+    let Some(mut memory) = store.memory(id).filter(|m| m.recallable() && !m.derived()) else {
+        return Ok(false);
+    };
+    if memory.evidence.contains(&session.key) {
+        return Ok(false);
+    }
+    memory.evidence.push(session.key.clone());
+    memory
+        .mentioned_at
+        .push(session.observed_at.clone().unwrap_or_else(|| Utc::now().format("%Y-%m-%d").to_string()));
+    store.save_memory(&memory, &format!("{id} mentioned again in {}", session.key))?;
+    Ok(true)
+}
+
+fn proposals(values: Vec<Value>) -> Vec<Proposal> {
+    values.into_iter().filter_map(|value| serde_json::from_value(value).ok()).collect()
+}
+
+/// Characters kept of a session summary.
+const SUMMARY_CHARS: usize = 700;
+
+/// The session's summary: one `summary` memory per session (replaced when the session is
+/// extracted again), in the order sessions were extracted, for the conversation timeline.
+fn save_summary(store: &Store, session: &SessionRow, text: &str) -> Result<String> {
+    let body: String = redact(text).chars().take(SUMMARY_CHARS).collect();
+    let existing = store
+        .memories()
+        .into_iter()
+        .find(|m| m.kind == "summary" && m.evidence.contains(&session.key));
+    let mut memory = match existing {
+        Some(mut memory) => {
+            memory.body = body;
+            memory.updated_at = Utc::now().to_rfc3339();
+            memory
+        }
+        None => memory::create(
+            NewMemory {
+                content: body,
+                kind: "summary".into(),
+                scope: session.project.clone().unwrap_or_else(|| "global".into()),
+                title: Some("Session summary".into()),
+                triggers: vec![],
+            },
+            "agent",
+        )?,
+    };
+    memory.observed_at = session.observed_at.clone();
+    if !memory.evidence.contains(&session.key) {
+        memory.evidence.push(session.key.clone());
+    }
+    store.save_memory(&memory, &format!("summary of {}", session.key))?;
+    Ok(memory.id)
 }
 
 fn normalize(text: &str) -> String {
@@ -410,8 +476,16 @@ fn apply(
     let users = normalize(&user_texts.join("\n"));
     let embedder = store.embedder.get();
     for proposal in proposals.into_iter().take(MAX_PROPOSALS) {
+        // Something already remembered came up again: count the mention.
+        if proposal.action == "mention" {
+            match proposal.id.as_deref() {
+                Some(id) if record_mention(store, id, session)? => updated.push(id.to_owned()),
+                _ => skipped.push(format!("mention: {}", proposal.id.unwrap_or_default())),
+            }
+            continue;
+        }
         let content = redact(proposal.content.trim());
-        if !["fact", "preference", "lesson", "skill", "rule"].contains(&proposal.kind.as_str())
+        if !["fact", "preference", "instruction", "lesson", "skill", "rule"].contains(&proposal.kind.as_str())
             || content.chars().count() < 10
             || content.len() > 4000
         {
@@ -491,18 +565,24 @@ fn apply(
         }
         // A statement that contradicts a memory without describing a change: keep both,
         // contested and linked, so a reader sees that the user said both.
+        // So does a "never did X" said after "did X": that denies the earlier statement
+        // rather than updating it, whatever the model called it.
+        let denies = |old: &Memory| crate::contradict::negative(&content) && !crate::contradict::negative(&old.body);
         let contradicted = match (proposal.action.as_str(), proposal.id.as_deref()) {
             ("contradict", Some(id)) => store.memory(id).filter(|old| {
-                old.recallable() && !matches!(old.kind.as_str(), "rule" | "digest" | "reflection")
+                old.recallable() && !matches!(old.kind.as_str(), "rule" | "digest" | "reflection" | "summary")
+            }),
+            ("supersede", Some(id)) => store.memory(id).filter(|old| {
+                old.recallable() && !matches!(old.kind.as_str(), "rule" | "digest" | "reflection" | "summary") && denies(old)
             }),
             _ => None,
         };
         // A changed fact: the new memory replaces the old one, which stays as history.
         let replaced = match (proposal.action.as_str(), proposal.id.as_deref()) {
-            ("supersede", Some(id)) => store.memory(id).filter(|old| {
+            ("supersede", Some(id)) if contradicted.is_none() => store.memory(id).filter(|old| {
                 old.recallable()
                     && old.source != "user"
-                    && !matches!(old.kind.as_str(), "rule" | "digest" | "reflection")
+                    && !matches!(old.kind.as_str(), "rule" | "digest" | "reflection" | "summary")
             }),
             _ => None,
         };
@@ -517,6 +597,7 @@ fn apply(
                 event_at.as_deref(),
             )?
         {
+            record_mention(store, &duplicate, session)?;
             skipped.push(format!("duplicate of {duplicate}"));
             continue;
         }
@@ -580,7 +661,7 @@ fn known_entities(store: &Store, project: Option<&str>) -> Vec<Value> {
     let memories: Vec<Memory> = store
         .memories()
         .into_iter()
-        .filter(|m| m.recallable() && m.in_scope(project) && !matches!(m.kind.as_str(), "digest" | "reflection"))
+        .filter(|m| m.recallable() && m.in_scope(project) && !m.derived())
         .collect();
     let mut counts: HashMap<String, (usize, String)> = HashMap::new();
     for memory in &memories {
@@ -678,7 +759,7 @@ pub fn refresh_digests<'a>(
     for (scope, topic) in keys {
         let mut members: Vec<&Memory> = all
             .iter()
-            .filter(|m| m.recallable() && !matches!(m.kind.as_str(), "digest" | "reflection") && m.scope == scope)
+            .filter(|m| m.recallable() && !m.derived() && m.scope == scope)
             .filter(|m| m.topics.contains(&topic))
             .collect();
         let existing = all
@@ -785,7 +866,7 @@ fn normalize_entities(names: &[String]) -> Vec<String> {
 }
 
 /// The numbers in a text, in order ("$1,200 on 2023-05-02" → 1200, 2023, 05, 02).
-fn numbers(text: &str) -> Vec<String> {
+pub(crate) fn numbers(text: &str) -> Vec<String> {
     text.split(|c: char| !c.is_ascii_digit() && c != ',')
         .map(|part| part.replace(',', ""))
         .filter(|part| !part.is_empty())
@@ -818,7 +899,7 @@ fn near_duplicate(
     Ok(store.with_index(|index, all| {
         all.values()
             .filter(|m: &&Memory| {
-                m.recallable() && m.scope == scope && !matches!(m.kind.as_str(), "digest" | "reflection")
+                m.recallable() && m.scope == scope && !m.derived()
             })
             .find(|m| {
                 if normalize(&m.body) == target {
@@ -853,7 +934,7 @@ fn day_gap(a: Option<&str>, b: Option<&str>) -> Option<i64> {
 
 /// The text without ISO-style dates ("2023-05-20", "2023/05", "2023-05-20T10:00"), whose
 /// digits would otherwise make a restated event look like a different fact.
-fn strip_dates(text: &str) -> String {
+pub(crate) fn strip_dates(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
     let mut out = String::with_capacity(text.len());
     let mut i = 0;
@@ -1237,6 +1318,50 @@ mod tests {
         assert_eq!(normalize_date("2023-5-1"), None);
         assert_eq!(normalize_date("2023"), Some("2023".into()));
 
+        // Questions about the past still find the statement that was replaced.
+        let past = recall::recall(
+            &store,
+            &Query { text: Some("Miso Tofu Bean cats first"), project: Some("home"), limit: 5, mode: recall::Mode::Search, ..Default::default() },
+        )
+        .unwrap();
+        assert!(past.iter().any(|h| h.memory.id == old.id && h.memory.status == "superseded"), "earlier statement recalled for a temporal question");
+
+        // A mention carries only an action and an id; a malformed proposal is dropped alone.
+        let output: Output = serde_json::from_str(r#"{"memories":[{"action":"mention","id":"mem_x"},{"type":7},{"type":"fact","content":"The user likes tea."}],"session_summary":"s"}"#).unwrap();
+        let parsed = proposals(output.memories);
+        assert_eq!(parsed.iter().map(|p| p.action.as_str()).collect::<Vec<_>>(), ["mention", "create"]);
+
+        // A later mention is counted once per session, not stored again.
+        let again = Proposal { action: "mention".into(), id: Some(current.id.clone()), ..Default::default() };
+        let (_, updated, _) = apply(&store, &session("s2b", "2023/08/01"), vec![again], &[], "", "").unwrap();
+        assert_eq!(updated, std::slice::from_ref(&current.id));
+        assert_eq!(store.memory(&current.id).unwrap().mentioned_at, ["2023/08/01"]);
+        assert!(!record_mention(&store, &current.id, &session("s2b", "2023/08/01")).unwrap(), "once per session");
+
+        // "Never did X" said after "did X" is a contradiction even when the model calls
+        // it an update: both stay, and a search shows them as one note.
+        let did = Proposal { kind: "fact".into(), scope: "project".into(), content: "The user attended a budgeting workshop led by Tamara.".into(), ..Default::default() };
+        let (created, _, _) = apply(&store, &session("s2c", "2023/08/02"), vec![did], &[], "", "").unwrap();
+        let did = created[0].clone();
+        let never = Proposal { action: "supersede".into(), id: Some(did.clone()), kind: "fact".into(), scope: "project".into(), content: "The user has never attended any budgeting workshop.".into(), ..Default::default() };
+        let (created, _, _) = apply(&store, &session("s2d", "2023/08/09"), vec![never], &[], "", "").unwrap();
+        assert_eq!((store.memory(&did).unwrap().status.as_str(), store.memory(&created[0]).unwrap().status.as_str()), ("contested", "contested"));
+        let hits = recall::recall(
+            &store,
+            &Query { text: Some("budgeting workshop"), project: Some("home"), limit: 5, mode: recall::Mode::Search, ..Default::default() },
+        )
+        .unwrap();
+        assert_eq!(hits[0].channel, "conflict");
+        assert!(hits[0].memory.body.contains("2023/08/02 — \"The user attended") && hits[0].memory.body.contains("never attended"), "{}", hits[0].memory.body);
+        assert_eq!(hits.iter().filter(|h| h.memory.body.contains("budgeting workshop")).count(), 1, "the two sides appear only in the note");
+
+        // One summary per session, replaced when the session is extracted again.
+        let first = save_summary(&store, &session("s5", "2023/07/10"), "The user asked about coin toss problems.").unwrap();
+        let again = save_summary(&store, &session("s5", "2023/07/10"), "The user asked about coin toss and dice problems.").unwrap();
+        let summary = store.memory(&again).unwrap();
+        assert_eq!((first, summary.kind.as_str(), summary.scope.as_str()), (again.clone(), "summary", "home"));
+        assert!(summary.body.contains("dice") && summary.evidence == ["s5"]);
+
         // A contradiction without a change keeps both sides, contested and linked.
         let said = Proposal {
             kind: "fact".into(),
@@ -1265,6 +1390,6 @@ mod tests {
             &Query { text: Some("coin toss problems"), project: Some("home"), limit: 5, mode: recall::Mode::Search, ..Default::default() },
         )
         .unwrap();
-        assert!(found.iter().any(|h| h.memory.id == first.id) && found.iter().any(|h| h.memory.id == second.id), "both sides recalled");
+        assert!(found[0].channel == "conflict" && found[0].memory.body.contains(&first.body) && found[0].memory.body.contains(&second.body), "both sides recalled as one note");
     }
 }
