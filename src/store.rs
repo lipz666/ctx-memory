@@ -303,7 +303,8 @@ CREATE TABLE IF NOT EXISTS maintenance_batches (id TEXT PRIMARY KEY, task TEXT N
 CREATE TABLE IF NOT EXISTS vectors (id TEXT PRIMARY KEY, hash TEXT NOT NULL, model TEXT NOT NULL, data BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS evictions (hash TEXT PRIMARY KEY, event_id TEXT NOT NULL, placeholder TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS rechecks (step_event TEXT PRIMARY KEY, task_key TEXT NOT NULL, created_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS episodes (id TEXT PRIMARY KEY, session TEXT NOT NULL, project TEXT, observed_at TEXT, seq INTEGER NOT NULL, hash TEXT NOT NULL, nonce BLOB NOT NULL, text BLOB NOT NULL);";
+CREATE TABLE IF NOT EXISTS episodes (id TEXT PRIMARY KEY, session TEXT NOT NULL, project TEXT, observed_at TEXT, seq INTEGER NOT NULL, hash TEXT NOT NULL, nonce BLOB NOT NULL, text BLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS turn_notes (id TEXT PRIMARY KEY, session TEXT NOT NULL, nonce BLOB NOT NULL, text BLOB NOT NULL);";
 
 impl Store {
     pub fn open(root: &Path) -> Result<Self> {
@@ -959,36 +960,63 @@ impl Store {
                 }
             }
         }
-        Ok(missing.len())
+        let turns = self.ensure_turn_vectors(&model, &embedder)?;
+        Ok(missing.len() + turns)
     }
     // ---- episodes (raw conversation excerpts) ----
     fn load_episodes(&self) -> Result<()> {
         let mut episodes = Episodes::default();
         let db = self.db.lock().unwrap();
+        // Sessions in the order they were stored: the order of the conversation.
+        let order: HashMap<String, i64> = db
+            .prepare("SELECT key, rowid FROM sessions")?
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?
+            .collect::<rusqlite::Result<_>>()?;
         let mut query =
-            db.prepare("SELECT id,session,project,observed_at,nonce,text FROM episodes")?;
+            db.prepare("SELECT id,session,project,observed_at,seq,nonce,text FROM episodes")?;
         let rows = query.query_map([], |r| {
             Ok((
                 r.get::<_, String>(0)?,
                 r.get::<_, String>(1)?,
                 r.get::<_, Option<String>>(2)?,
                 r.get::<_, Option<String>>(3)?,
-                r.get::<_, Vec<u8>>(4)?,
+                r.get::<_, i64>(4)?,
                 r.get::<_, Vec<u8>>(5)?,
+                r.get::<_, Vec<u8>>(6)?,
             ))
         })?;
+        type SessionExcerpts = (Option<String>, Option<String>, Vec<(i64, String, String)>);
+        let mut sessions: HashMap<String, SessionExcerpts> = HashMap::new();
         for row in rows {
-            let (id, session, project, observed_at, nonce, blob) = row?;
-            let text = self.decrypt(&nonce, &blob)?;
-            episodes.index.upsert(&id, text.as_str().unwrap_or_default());
+            let (id, session, project, observed_at, seq, nonce, blob) = row?;
+            let text = self.decrypt(&nonce, &blob)?.as_str().unwrap_or_default().to_owned();
+            episodes.index.upsert(&id, &text);
             episodes.meta.insert(
-                id,
+                id.clone(),
                 EpisodeMeta {
-                    session,
-                    project,
-                    observed_at,
+                    session: session.clone(),
+                    project: project.clone(),
+                    observed_at: observed_at.clone(),
+                    turn: 0,
                 },
             );
+            sessions.entry(session).or_insert((project, observed_at, vec![])).2.push((seq, id, text));
+        }
+        let mut sessions: Vec<(String, SessionExcerpts)> = sessions.into_iter().collect();
+        sessions.sort_by(|a, b| {
+            (order.get(&a.0).copied().unwrap_or(i64::MAX), &a.0).cmp(&(order.get(&b.0).copied().unwrap_or(i64::MAX), &b.0))
+        });
+        for (session, (project, observed_at, mut excerpts)) in sessions {
+            excerpts.sort_by_key(|e| e.0);
+            let excerpts: Vec<(String, String)> = excerpts.into_iter().map(|(_, id, text)| (id, text)).collect();
+            episodes.add_turns(&session, project.as_deref(), observed_at.as_deref(), &excerpts);
+        }
+        let mut query = db.prepare("SELECT id,nonce,text FROM turn_notes")?;
+        let notes = query.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, Vec<u8>>(1)?, r.get::<_, Vec<u8>>(2)?)))?;
+        for row in notes {
+            let (id, nonce, blob) = row?;
+            let note = self.decrypt(&nonce, &blob)?.as_str().unwrap_or_default().to_owned();
+            episodes.set_note(&id, &note);
         }
         if let Some(model) = self.vector_model() {
             let mut query = db.prepare(
@@ -1003,9 +1031,73 @@ impl Store {
                     episodes.index.set_vector(&id, bytes_to_vector(&data));
                 }
             }
+            // The user's messages; a vector counts only for the text it was made from.
+            let mut query = db.prepare(
+                "SELECT id,hash,data FROM vectors WHERE model=?1 AND id LIKE 'tu\\_%' ESCAPE '\\'",
+            )?;
+            let rows = query.query_map([&model], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, Vec<u8>>(2)?))
+            })?;
+            for row in rows {
+                let (id, hash, data) = row?;
+                if episodes.turn_meta.get(&id).is_some_and(|t| text_hash(&t.document()) == hash) {
+                    episodes.turns.set_vector(&id, bytes_to_vector(&data));
+                }
+            }
         }
         *self.episodes.write().unwrap() = episodes;
         Ok(())
+    }
+    /// Store the gist of the assistant's reply for turns of `session` (by turn id) and
+    /// re-embed them. Returns how many were stored.
+    pub fn set_turn_notes(&self, session: &str, notes: &[(String, String)]) -> Result<usize> {
+        let mut stored = 0;
+        {
+            let db = self.db.lock().unwrap();
+            let mut episodes = self.episodes.write().unwrap();
+            for (id, note) in notes {
+                if !episodes.set_note(id, note) {
+                    continue;
+                }
+                let (nonce, blob) = self.seal(&json!(note))?;
+                db.execute(
+                    "INSERT OR REPLACE INTO turn_notes(id,session,nonce,text) VALUES (?1,?2,?3,?4)",
+                    params![id, session, nonce.as_slice(), blob],
+                )?;
+                stored += 1;
+            }
+        }
+        if let Some(model) = self.vector_model()
+            && let Some(embedder) = self.embedder.load(&model, self.config.embedding.workers)
+        {
+            self.ensure_turn_vectors(&model, &embedder)?;
+        }
+        Ok(stored)
+    }
+    /// Embed the users' messages that lack a vector (turns of earlier versions, or added
+    /// while the model was unavailable). Returns how many were embedded.
+    fn ensure_turn_vectors(&self, model: &str, embedder: &embed::Embedder) -> Result<usize> {
+        let missing: Vec<(String, String)> = self.with_episodes(|e| {
+            e.turn_meta
+                .iter()
+                .filter(|(id, t)| !t.text.is_empty() && !e.turns.has_vector(id))
+                .map(|(id, t)| (id.clone(), t.document()))
+                .collect()
+        });
+        for chunk in missing.chunks(32) {
+            let docs: Vec<(String, String)> = chunk.iter().map(|(_, text)| ("user message".to_owned(), text.clone())).collect();
+            let vectors = embedder.embed_documents(&docs)?;
+            let db = self.db.lock().unwrap();
+            let mut episodes = self.episodes.write().unwrap();
+            for ((id, text), vector) in chunk.iter().zip(vectors) {
+                db.execute(
+                    "INSERT OR REPLACE INTO vectors(id,hash,model,data) VALUES (?1,?2,?3,?4)",
+                    params![id, text_hash(text), model, vector_to_bytes(&vector)],
+                )?;
+                episodes.turns.set_vector(id, vector);
+            }
+        }
+        Ok(missing.len())
     }
     /// Store a finished session's conversation as searchable excerpts (embedded when the
     /// embedding model is enabled). Returns how many were added.
@@ -1080,20 +1172,28 @@ impl Store {
             }
             tx.commit()?;
         }
-        let mut episodes = self.episodes.write().unwrap();
-        for (i, (id, text)) in ids.iter().zip(&texts).enumerate() {
-            episodes.index.upsert(id, text);
-            if let Some(vectors) = &vectors {
-                episodes.index.set_vector(id, vectors[i].clone());
+        {
+            let mut episodes = self.episodes.write().unwrap();
+            for (i, (id, text)) in ids.iter().zip(&texts).enumerate() {
+                episodes.index.upsert(id, text);
+                if let Some(vectors) = &vectors {
+                    episodes.index.set_vector(id, vectors[i].clone());
+                }
+                episodes.meta.insert(
+                    id.clone(),
+                    EpisodeMeta {
+                        session: session.key.clone(),
+                        project: session.project.clone(),
+                        observed_at: session.observed_at.clone(),
+                        turn: 0,
+                    },
+                );
             }
-            episodes.meta.insert(
-                id.clone(),
-                EpisodeMeta {
-                    session: session.key.clone(),
-                    project: session.project.clone(),
-                    observed_at: session.observed_at.clone(),
-                },
-            );
+            let excerpts: Vec<(String, String)> = ids.iter().cloned().zip(texts.iter().cloned()).collect();
+            episodes.add_turns(&session.key, session.project.as_deref(), session.observed_at.as_deref(), &excerpts);
+        }
+        if let (Some(model), Some(embedder)) = (&model, &embedder) {
+            self.ensure_turn_vectors(model, embedder)?;
         }
         Ok(texts.len())
     }
@@ -1627,6 +1727,9 @@ fn ensure_column(db: &Connection, table: &str, column: &str, definition: &str) -
         db.execute_batch(&format!("ALTER TABLE {table} ADD COLUMN {definition}"))?;
     }
     Ok(())
+}
+fn text_hash(text: &str) -> String {
+    hex::encode(Sha256::digest(text.as_bytes()))
 }
 fn vector_to_bytes(vector: &[f32]) -> Vec<u8> {
     vector.iter().flat_map(|x| x.to_le_bytes()).collect()

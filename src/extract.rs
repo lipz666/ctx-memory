@@ -38,6 +38,9 @@ struct Output {
     /// What the user brought up in this session and what the assistant gave, in order.
     #[serde(default)]
     session_summary: Option<String>,
+    /// For each numbered user message, the gist of the assistant's reply.
+    #[serde(default)]
+    turns: Vec<Value>,
 }
 #[derive(Deserialize, Default)]
 struct Proposal {
@@ -144,7 +147,7 @@ pub fn transcript(store: &Store, session: &SessionRow) -> Result<Transcript> {
         .map(|(_, text)| text.clone())
         .collect();
     Ok(Transcript {
-        digest: digest(&entries),
+        digest: digest(&entries, store.config.extraction.turn_notes),
         user_texts,
         entries,
     })
@@ -152,10 +155,19 @@ pub fn transcript(store: &Store, session: &SessionRow) -> Result<Transcript> {
 
 /// Fit entries into the digest budget: user lines are kept, the middle of the rest is
 /// dropped first.
-fn digest(entries: &[(String, String)]) -> String {
+fn digest(entries: &[(String, String)], numbered: bool) -> String {
+    // With turn notes the user messages are numbered so that the model can refer to each.
+    let mut number = 0;
     let lines: Vec<String> = entries
         .iter()
-        .map(|(role, text)| format!("[{role}] {}", text.trim()))
+        .map(|(role, text)| {
+            if role == "user" && numbered {
+                number += 1;
+                format!("[user #{number}] {}", text.trim())
+            } else {
+                format!("[{role}] {}", text.trim())
+            }
+        })
         .collect();
     let total: usize = lines.iter().map(|l| l.chars().count() + 1).sum();
     if total <= DIGEST_CHARS {
@@ -170,7 +182,7 @@ fn digest(entries: &[(String, String)]) -> String {
         if size <= DIGEST_CHARS {
             break;
         }
-        if !lines[i].starts_with("[user]") && i + 1 != lines.len() {
+        if !lines[i].starts_with("[user") && i + 1 != lines.len() {
             keep[i] = false;
             size -= lines[i].chars().count() + 1;
         }
@@ -330,6 +342,11 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
         }
         None => PROMPT.to_owned(),
     };
+    let prompt = if store.config.extraction.turn_notes {
+        format!("{prompt}\n\n{TURNS_PROMPT}")
+    } else {
+        prompt
+    };
     let mut output = None;
     let mut last_error = String::new();
     for attempt in 0..2 {
@@ -373,6 +390,7 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
         Some(text) if text.chars().count() >= 20 => Some(save_summary(store, session, text)?),
         _ => None,
     };
+    let notes = save_turn_notes(store, session, &transcript.user_texts, &output.turns)?;
     // A failed check never fails the extraction.
     let contested = if store.config.extraction.contradictions {
         crate::contradict::check(store, project, &result.0)
@@ -392,7 +410,7 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
     };
     store.finish_session(&session.key, "done", None)?;
     Ok(
-        json!({"session":session.key,"created":result.0,"updated":result.1,"skipped":result.2,"skip_reason":output.skip_reason,"episodes":episodes,"digests":digests,"summary":summary,"contested":contested,"reflections":reflections}),
+        json!({"session":session.key,"created":result.0,"updated":result.1,"skipped":result.2,"skip_reason":output.skip_reason,"episodes":episodes,"digests":digests,"summary":summary,"turn_notes":notes,"contested":contested,"reflections":reflections}),
     )
 }
 
@@ -415,6 +433,42 @@ fn record_mention(store: &Store, id: &str, session: &SessionRow) -> Result<bool>
 
 fn proposals(values: Vec<Value>) -> Vec<Proposal> {
     values.into_iter().filter_map(|value| serde_json::from_value(value).ok()).collect()
+}
+
+/// Added to the extraction prompt when `extraction.turn_notes` is on.
+const TURNS_PROMPT: &str = "Also return \"turns\": for each user message, numbered \"[user #n]\" in the transcript, {\"n\": n, \"assistant\": \"...\"} with what the assistant answered in one to three sentences and its key specifics (the steps, recommendations, options, numbers, names and code choices it gave), so that a later question about what was recommended or worked out can be answered without the full reply. Leave out user messages the assistant did not answer. Add it to the JSON as \"turns\":[{\"n\":1,\"assistant\":\"...\"}].";
+
+/// Characters kept of the gist of one reply.
+const TURN_NOTE_CHARS: usize = 600;
+
+/// Attach the model's gist of each reply ({"n": user message number, "assistant": ...})
+/// to the session's turn holding that user message (matched by its text, so a merged or
+/// skipped turn never shifts the rest). Returns how many were stored.
+pub(crate) fn save_turn_notes(store: &Store, session: &SessionRow, user_texts: &[String], turns: &[Value]) -> Result<usize> {
+    let key = |text: &str| -> String { text.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(120).collect() };
+    let ids: HashMap<String, String> = store.with_episodes(|e| {
+        e.session_turns
+            .get(&session.key)
+            .into_iter()
+            .flatten()
+            .filter_map(|id| e.turn_meta.get(id).map(|t| (key(&t.text), id.clone())))
+            .collect()
+    });
+    let mut notes = vec![];
+    for turn in turns {
+        let (Some(number), Some(note)) = (turn.get("n").and_then(Value::as_u64), turn.get("assistant").and_then(Value::as_str)) else {
+            continue;
+        };
+        let note = redact(note.trim());
+        let Some(text) = user_texts.get((number as usize).wrapping_sub(1)) else { continue };
+        if note.chars().count() < 10 {
+            continue;
+        }
+        if let Some(id) = ids.get(&key(text)) {
+            notes.push((id.clone(), note.chars().take(TURN_NOTE_CHARS).collect()));
+        }
+    }
+    store.set_turn_notes(&session.key, &notes)
 }
 
 /// Characters kept of a session summary.
@@ -982,9 +1036,10 @@ mod tests {
             "assistant".into(),
             "Fixed: rounding uses ROUND_HALF_UP".into(),
         ));
-        let text = digest(&entries);
+        let text = digest(&entries, false);
         assert!(text.chars().count() <= DIGEST_CHARS + 200);
         assert!(text.starts_with("[user] fix the billing bug"));
+        assert!(digest(&entries, true).starts_with("[user #1] fix the billing bug"), "numbered for turn notes");
         assert!(text.ends_with("ROUND_HALF_UP"));
         assert!(text.contains("steps omitted"));
     }
@@ -1348,7 +1403,7 @@ mod tests {
         assert_eq!((store.memory(&did).unwrap().status.as_str(), store.memory(&created[0]).unwrap().status.as_str()), ("contested", "contested"));
         let hits = recall::recall(
             &store,
-            &Query { text: Some("budgeting workshop"), project: Some("home"), limit: 5, mode: recall::Mode::Search, ..Default::default() },
+            &Query { text: Some("Have I ever attended a budgeting workshop?"), project: Some("home"), limit: 5, mode: recall::Mode::Search, ..Default::default() },
         )
         .unwrap();
         assert_eq!(hits[0].channel, "conflict");
@@ -1387,7 +1442,7 @@ mod tests {
         assert_eq!(recall::conflicts(&store, &second), [("2023/07/05".to_string(), first.body.clone())]);
         let found = recall::recall(
             &store,
-            &Query { text: Some("coin toss problems"), project: Some("home"), limit: 5, mode: recall::Mode::Search, ..Default::default() },
+            &Query { text: Some("Have I done coin toss problems?"), project: Some("home"), limit: 5, mode: recall::Mode::Search, ..Default::default() },
         )
         .unwrap();
         assert!(found[0].channel == "conflict" && found[0].memory.body.contains(&first.body) && found[0].memory.body.contains(&second.body), "both sides recalled as one note");

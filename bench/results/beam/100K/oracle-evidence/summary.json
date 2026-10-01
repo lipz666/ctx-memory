@@ -1,0 +1,31 @@
+{
+  "system": "oracle-evidence",
+  "questions": 400,
+  "conversations": 20,
+  "overall": 0.5102,
+  "abilities": {
+    "abstention": 1.0,
+    "contradiction_resolution": 0.1688,
+    "event_ordering": 0.3381,
+    "information_extraction": 0.7573,
+    "instruction_following": 0.1375,
+    "knowledge_update": 0.65,
+    "multi_session_reasoning": 0.4892,
+    "preference_following": 0.475,
+    "summarization": 0.5991,
+    "temporal_reasoning": 0.4875
+  },
+  "errors": 0,
+  "tau_nan": 0,
+  "budget_tokens": null,
+  "kept_tokens_mean": 768,
+  "search_ms_p50": 0,
+  "wall_seconds": 445,
+  "usage": {
+    "reader_judge": {
+      "calls": 1810,
+      "input_tokens": 1043159,
+      "output_tokens": 58796
+    }
+  }
+}

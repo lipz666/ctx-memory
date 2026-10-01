@@ -26,6 +26,8 @@ pub struct Hit {
     /// Search mode: hits about the same topic share a group; groups come in order of
     /// relevance and hits within a group in chronological order.
     pub group: Option<usize>,
+    /// Position in the conversation (turn number, see `episode::Turn`), when known.
+    pub turn: Option<usize>,
 }
 
 /// Cosine similarity at which two search hits are treated as the same topic (distinct
@@ -59,6 +61,8 @@ pub struct Query<'a> {
     pub episodes: usize,
     /// Search mode only: pack the result into this many tokens (see `pack`).
     pub budget: Option<usize>,
+    /// Search mode: add the user's own messages (`turn_log`) within the budget.
+    pub turns: bool,
 }
 
 /// What a question asks for, from its wording (no model call).
@@ -77,6 +81,9 @@ pub struct Intent {
     /// "summarize", "how has ... progressed", "walk me through": an account of the whole
     /// history, so the conversation timeline helps.
     pub overview: bool,
+    /// "Have I ever...", "Did I...": a yes/no question about the user's own history, the
+    /// only kind that raises an unresolved contradiction.
+    pub yes_no: bool,
 }
 
 const AGGREGATE_CUES: &[&str] = &[
@@ -94,6 +101,10 @@ const CONVERSATION_CUES: &[&str] = &[
 const OVERVIEW_CUES: &[&str] = &[
     "summarize", "summarise", "summary", "overview", "recap", "progressed", "progress", "walk me through",
     "over time", "throughout", "across our conversations", "so far", "总结", "概括", "回顾", "进展", "梳理",
+];
+const YES_NO_STARTS: &[&str] = &[
+    "have i ", "has my ", "had i ", "did i ", "do i ", "does my ", "am i ", "was i ", "were i ", "is my ",
+    "are my ", "is it true", "have we ", "did we ", "do we ", "我有没有", "我是否", "我有没有", "我曾经", "我做过",
 ];
 const MENTION_ORDER_CUES: &[&str] = &[
     "order in which i", "order i brought", "order i mentioned", "brought up", "i mentioned first",
@@ -124,6 +135,7 @@ pub fn intent(text: &str) -> Intent {
         conversation: has(CONVERSATION_CUES),
         mention_order: has(MENTION_ORDER_CUES),
         overview: has(OVERVIEW_CUES),
+        yes_no: YES_NO_STARTS.iter().any(|start| text.trim_start().starts_with(start)),
     }
 }
 
@@ -138,13 +150,24 @@ const TIMELINE_CHARS: usize = 6000;
 /// Characters per timeline line: at most, and at least before lines are left out.
 const TIMELINE_LINE_MAX: usize = 400;
 const TIMELINE_LINE_MIN: usize = 140;
-/// Standing instructions attached to every search, most relevant first.
-const INSTRUCTIONS: usize = 3;
+/// Standing instructions attached to every search, most relevant first. A person has few
+/// (about four per BEAM conversation) and a missed one costs the answer, so all of them.
+const INSTRUCTIONS: usize = 10;
+/// The user's own messages given with a search (`turn_log`): the whole record for
+/// questions about how things went, in what order or how often, otherwise the most
+/// relevant ones; each message cut to TURN_LINE_CHARS.
+pub const TURN_LOG_CHARS: usize = 64_000;
+const TURN_LINE_CHARS: usize = 700;
+/// Characters of the gist of a reply shown after the user's message.
+const TURN_NOTE_LINE_CHARS: usize = 500;
+pub const RELEVANT_TURNS: usize = 20;
+/// Share of a packing budget the user's messages may take (`Query::turns`).
+const TURN_SHARE: f64 = 0.3;
 
 /// Hits that stay at the top in this order: rules, the user's standing instructions,
-/// unresolved contradictions, the conversation timeline.
+/// unresolved contradictions, the conversation timeline, the user's messages.
 fn leading(hit: &Hit) -> bool {
-    matches!(hit.channel, "rule" | "instruction" | "conflict" | "timeline")
+    matches!(hit.channel, "rule" | "instruction" | "conflict" | "timeline" | "turnlog")
 }
 
 /// Characters of an excerpt kept around its best-matching sentence when packing. Whole
@@ -279,7 +302,7 @@ fn episode_hits(
                 channel: "episode",
                 score: score as f64,
                 reason,
-                group: None,
+                group: None, turn: None,
             });
         }
     }
@@ -289,13 +312,27 @@ fn episode_hits(
 pub fn recall(store: &Store, query: &Query) -> Result<Vec<Hit>> {
     let mut hits = recall_ranked(store, query)?;
     if query.mode == Mode::Search {
+        for hit in hits.iter_mut() {
+            hit.turn = position(store, &hit.memory, hit.channel);
+        }
         group_by_topic(store, &mut hits);
-        conflict_notes(store, &mut hits);
         if let Some(text) = query.text {
             let wanted = intent(text);
+            // A contradiction is raised only when asked whether something is so; for a
+            // count, a date or a summary both statements are just evidence.
+            if wanted.yes_no {
+                conflict_notes(store, &mut hits);
+            }
             if wanted.overview || wanted.mention_order || wanted.aggregate {
                 let chars = query.budget.map_or(TIMELINE_CHARS, |b| (b as f64 * 4.0 * TIMELINE_SHARE) as usize);
                 if let Some(hit) = timeline(store, text, query.project, chars)? {
+                    let at = hits.iter().take_while(|h| leading(h)).count();
+                    hits.insert(at, hit);
+                }
+            }
+            if query.turns {
+                let chars = query.budget.map_or(TURN_LOG_CHARS / 4, |b| (b as f64 * 4.0 * TURN_SHARE) as usize);
+                if let Some(hit) = turn_log(store, text, query.project, chars)? {
                     let at = hits.iter().take_while(|h| leading(h)).count();
                     hits.insert(at, hit);
                 }
@@ -367,13 +404,17 @@ pub fn pack(hits: Vec<Hit>, question: &str, budget: usize) -> Vec<Hit> {
     }
     let rules = kept_memories.iter().take_while(|h| leading(h)).count();
     if intent.mention_order {
-        // Creation order is the order of mention: sessions are extracted in sequence.
-        kept_memories[rules..].sort_by(|a, b| a.memory.created_at.cmp(&b.memory.created_at));
+        // The conversation order: turn numbers, else creation order (sessions are
+        // extracted in sequence).
+        kept_memories[rules..].sort_by(|a, b| {
+            (a.turn.unwrap_or(usize::MAX), &a.memory.created_at).cmp(&(b.turn.unwrap_or(usize::MAX), &b.memory.created_at))
+        });
     } else if intent.temporal {
         // Same-day memories keep the order they were mentioned in.
         kept_memories[rules..].sort_by(|a, b| {
             date_key(&a.memory)
                 .cmp(&date_key(&b.memory))
+                .then_with(|| a.turn.cmp(&b.turn))
                 .then_with(|| a.memory.created_at.cmp(&b.memory.created_at))
         });
     }
@@ -576,7 +617,7 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                         "pinned"
                     }
                     .into(),
-                    group: None,
+                    group: None, turn: None,
                 });
             }
         }
@@ -592,7 +633,7 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                             channel: "trigger",
                             score: 0.95,
                             reason: format!("trigger:{}", trigger.id),
-                            group: None,
+                            group: None, turn: None,
                         },
                     );
                 }
@@ -643,7 +684,7 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                     channel: "search",
                     score: score as f64,
                     reason,
-                    group: None,
+                    group: None, turn: None,
                 });
             }
             // Entity index (search mode): memories about a person, place or product the
@@ -666,7 +707,7 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                             channel: "search",
                             score: ENTITY_SCORE,
                             reason: format!("entity:{entity}"),
-                            group: None,
+                            group: None, turn: None,
                         },
                     );
                 }
@@ -685,7 +726,7 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                             channel: "instruction",
                             score: 1.0,
                             reason: format!("instruction:{score:.2}"),
-                            group: None,
+                            group: None, turn: None,
                         });
                     }
                 }
@@ -698,7 +739,7 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                     channel: "gate",
                     score: 0.9,
                     reason: "gate".into(),
-                    group: None,
+                    group: None, turn: None,
                 });
             }
         }
@@ -815,13 +856,132 @@ fn source_excerpts(store: &Store, memories: &[Hit], found: &[Hit], project: Opti
             channel: "episode",
             score: hit.score * SOURCE_DISCOUNT,
             reason: format!("source of {} ({similarity:.2})", hit.memory.id),
-            group: None,
+            group: None, turn: None,
         });
     }
     Ok(out)
 }
 /// Contradictions shown per search.
 const CONFLICT_NOTES: usize = 3;
+
+/// A hit's position in the conversation: an excerpt's or a user message's own turn; a
+/// memory's, the turn it was distilled from (its most similar excerpt in the session it
+/// was first said in). None for overviews and without vectors.
+pub fn position(store: &Store, memory: &Memory, channel: &str) -> Option<usize> {
+    match channel {
+        "episode" => store.with_episodes(|e| e.meta.get(&memory.id).map(|m| m.turn)).filter(|&t| t > 0),
+        "turn" => store.with_episodes(|e| e.turn_meta.get(&memory.id).map(|t| t.number)),
+        "timeline" | "conflict" | "turnlog" => None,
+        _ if memory.derived() => None,
+        _ => {
+            let session = memory.evidence.first()?;
+            let vector = store.with_index(|index, _| index.vector(&memory.id).cloned())?;
+            store.with_episodes(|e| {
+                let mut best: Option<(usize, f32)> = None;
+                for id in e.session_turns.get(session)? {
+                    let Some(turn) = e.turn_meta.get(id) else { continue };
+                    for excerpt in &turn.excerpts {
+                        if let Some(v) = e.index.vector(excerpt) {
+                            let similarity = crate::embed::dot(&vector, v);
+                            if best.is_none_or(|(_, b)| similarity > b) {
+                                best = Some((turn.number, similarity));
+                            }
+                        }
+                    }
+                }
+                best.map(|(number, _)| number)
+            })
+        }
+    }
+}
+
+/// A question about what the assistant contributed, or an account of how things went
+/// (not a count or an order of what the user brought up).
+pub fn summary_question(wanted: &Intent) -> bool {
+    wanted.conversation || (wanted.overview && !wanted.aggregate && !wanted.mention_order)
+}
+
+/// The user's messages in scope ranked by relevance to `text`: (turn id, score).
+fn ranked_turns(store: &Store, text: &str, vector: Option<&[f32]>, project: Option<&str>) -> Vec<(String, f32)> {
+    store.with_episodes(|e| {
+        hybrid(&e.turns, &store.config.recall, true, text, vector, e.turn_meta.len().max(1), |id| e.turn_in_scope(id, project), 0.0)
+            .into_iter()
+            .map(|(id, score, _)| (id, score))
+            .collect()
+    })
+}
+
+/// The user's own messages as one block in conversation order (turn number, date said,
+/// text), within `chars`: every message in scope for questions about how things went, in
+/// what order or how often (the most relevant when they do not all fit), otherwise the
+/// RELEVANT_TURNS most relevant. The user's own words decide what they said, did or
+/// planned, and the turn numbers which of two things came later on the same day.
+pub fn turn_log(store: &Store, text: &str, project: Option<&str>, chars: usize) -> Result<Option<Hit>> {
+    let vector = match store.embedder.get() {
+        Some(embedder) => Some(embedder.embed_query(text)?),
+        None => None,
+    };
+    let wanted = intent(text);
+    let whole = wanted.overview || wanted.mention_order || wanted.aggregate;
+    // The gist of the assistant's replies only where the question is about them: what
+    // was recommended, or an account of how things went. Next to the user's own words it
+    // is otherwise taken for what the user did or said (a suggested setting read as the
+    // one the user chose, a general figure read as the user's latest value).
+    let notes = summary_question(&wanted);
+    let ranked = ranked_turns(store, text, vector.as_deref(), project);
+    let (lines, count, total) = store.with_episodes(|e| {
+        let line = |t: &crate::episode::Turn| {
+            let mut body: String = t.text.chars().take(TURN_LINE_CHARS).collect();
+            if body.len() < t.text.len() {
+                body.push('…');
+            }
+            let note = t
+                .reply()
+                .filter(|_| notes)
+                .map(|n| format!(" → Assistant: {}", n.chars().take(TURN_NOTE_LINE_CHARS).collect::<String>().replace('\n', " ")))
+                .unwrap_or_default();
+            format!("- #{} [{}] {}{note}", t.number, t.observed_at.as_deref().unwrap_or("date unknown"), body.replace('\n', " "))
+        };
+        let in_scope: Vec<(&String, &crate::episode::Turn)> =
+            e.turn_meta.iter().filter(|(id, t)| !t.text.is_empty() && e.turn_in_scope(id, project)).collect();
+        let total = in_scope.len();
+        // Most relevant first; for a whole record, the others after them.
+        let mut order: Vec<&String> = ranked.iter().map(|(id, _)| id).filter(|id| e.turn_meta.contains_key(*id)).collect();
+        if whole {
+            let listed: HashSet<&String> = order.iter().copied().collect();
+            let mut rest: Vec<&String> = in_scope.iter().map(|(id, _)| *id).filter(|id| !listed.contains(id)).collect();
+            rest.sort_by_key(|id| e.turn_meta[*id].number);
+            order.extend(rest);
+        } else {
+            order.truncate(RELEVANT_TURNS);
+        }
+        let mut used = 0;
+        let mut chosen: Vec<&crate::episode::Turn> = vec![];
+        for id in order {
+            let turn = &e.turn_meta[id];
+            let cost = line(turn).chars().count() + 1;
+            if used + cost <= chars {
+                used += cost;
+                chosen.push(turn);
+            }
+        }
+        chosen.sort_by_key(|t| t.number);
+        let count = chosen.len();
+        (chosen.into_iter().map(line).collect::<Vec<_>>(), count, total)
+    });
+    if lines.is_empty() {
+        return Ok(None);
+    }
+    let heading = if count == total {
+        format!("The user's own messages, all {total}, in conversation order (turn number: a higher number is later, also on the same date; date said; → the gist of the assistant's reply):")
+    } else {
+        format!("The user's own messages most relevant to the question ({count} of {total}), in conversation order (turn number: a higher number is later, also on the same date; date said; → the gist of the assistant's reply):")
+    };
+    let mut memory = Memory::episode("turnlog", project, format!("{heading}\n{}", lines.join("\n")), None);
+    memory.kind = "turnlog".into();
+    memory.title = "The user's messages".into();
+    Ok(Some(Hit { memory, channel: "turnlog", score: 1.0, reason: format!("{count} of {total} turns"), group: None, turn: None }))
+}
 
 /// Replace the two sides of an unresolved contradiction among the hits with one note that
 /// states both (a reader skims past a remark at the end of one memory).
@@ -855,7 +1015,7 @@ fn conflict_notes(store: &Store, hits: &mut Vec<Hit>) {
         memory.kind = "conflict".into();
         memory.title = "Unresolved contradiction".into();
         covered.extend([first.id.clone(), second.id.clone()]);
-        notes.push(Hit { memory, channel: "conflict", score: 1.0, reason: "conflict".into(), group: None });
+        notes.push(Hit { memory, channel: "conflict", score: 1.0, reason: "conflict".into(), group: None, turn: None });
     }
     if notes.is_empty() {
         return;
@@ -894,6 +1054,20 @@ fn timeline(store: &Store, text: &str, project: Option<&str>, chars: usize) -> R
             let count = (chars / TIMELINE_LINE_MIN).max(1);
             (ranked.into_iter().take(count).map(|(id, _)| id).collect(), TIMELINE_LINE_MIN)
         };
+        let turns = |m: &Memory| -> String {
+            store.with_episodes(|e| {
+                let numbers: Vec<usize> = m
+                    .evidence
+                    .first()
+                    .and_then(|session| e.session_turns.get(session))
+                    .map(|ids| ids.iter().filter_map(|id| e.turn_meta.get(id).map(|t| t.number)).collect())
+                    .unwrap_or_default();
+                match (numbers.iter().min(), numbers.iter().max()) {
+                    (Some(first), Some(last)) => format!(", turns #{first}–#{last}"),
+                    _ => String::new(),
+                }
+            })
+        };
         summaries
             .into_iter()
             .enumerate()
@@ -904,7 +1078,7 @@ fn timeline(store: &Store, text: &str, project: Option<&str>, chars: usize) -> R
                 if body.len() < m.body.len() {
                     body.push('…');
                 }
-                format!("- #{} [{date}] {body}", i + 1)
+                format!("- Session {} [{date}{}] {body}", i + 1, turns(m))
             })
             .collect::<Vec<_>>()
     });
@@ -914,12 +1088,12 @@ fn timeline(store: &Store, text: &str, project: Option<&str>, chars: usize) -> R
     let mut memory = Memory::episode(
         "timeline",
         project,
-        format!("Timeline of our conversations (session number, date, what was discussed; oldest first):\n{}", lines.join("\n")),
+        format!("Timeline of our conversations (session, date, turns; what was discussed; oldest first):\n{}", lines.join("\n")),
         None,
     );
     memory.kind = "timeline".into();
     memory.title = "Conversation timeline".into();
-    Ok(Some(Hit { memory, channel: "timeline", score: 1.0, reason: "timeline".into(), group: None }))
+    Ok(Some(Hit { memory, channel: "timeline", score: 1.0, reason: "timeline".into(), group: None, turn: None }))
 }
 
 /// Whether `text` names `entity` as a whole word (case-insensitive; CJK names by
@@ -1021,7 +1195,10 @@ fn group_by_topic(store: &Store, hits: &mut Vec<Hit>) {
         .collect();
     let mut ranked: Vec<Option<Hit>> = ranked.into_iter().map(Some).collect();
     for (number, mut group) in topics(&vectors).into_iter().enumerate() {
-        group.sort_by_key(|&i| (date_key(&ranked[i].as_ref().unwrap().memory), i));
+        group.sort_by_key(|&i| {
+            let hit = ranked[i].as_ref().unwrap();
+            (date_key(&hit.memory), hit.turn, i)
+        });
         for i in group {
             let mut hit = ranked[i].take().unwrap();
             hit.group = Some(number);
@@ -1099,7 +1276,7 @@ mod tests {
         let hits = search("Summarize how my Flask app project progressed", Some(2000));
         let timeline = hits.iter().find(|h| h.channel == "timeline").expect("timeline");
         let body = &timeline.memory.body;
-        assert!(body.contains("- #1 [2024/01/01] Set up the Flask") && body.find("#1").unwrap() < body.find("#3 [2024/03/01] Deployed").unwrap(), "{body}");
+        assert!(body.contains("- Session 1 [2024/01/01] Set up the Flask") && body.find("Session 1").unwrap() < body.find("Session 3 [2024/03/01] Deployed").unwrap(), "{body}");
         assert!(search("Flask project", None).iter().all(|h| h.memory.kind != "summary" && h.channel != "timeline"), "summaries only in the timeline");
         let hits = search("What is the probability of drawing a red card?", None);
         assert_eq!((hits[0].channel, hits[0].memory.id.as_str()), ("instruction", tip.as_str()));
@@ -1213,7 +1390,7 @@ mod tests {
             memory.kind = "fact".into();
             memory.created_at = created.into();
             memory.event_at = date.map(str::to_owned);
-            Hit { memory, channel: "search", score: 0.5, reason: String::new(), group: None }
+            Hit { memory, channel: "search", score: 0.5, reason: String::new(), group: None, turn: None }
         };
         let hits = vec![
             hit("mem_c", "2024-03-01T10:00:02Z", Some("2024-01-01")),
@@ -1231,7 +1408,7 @@ mod tests {
             let mut memory = Memory::episode(id, Some("q"), body, None);
             memory.kind = if channel == "episode" { "episode".into() } else { "fact".into() };
             memory.event_at = date.map(str::to_owned);
-            Hit { memory, channel, score: 0.5, reason: String::new(), group: None }
+            Hit { memory, channel, score: 0.5, reason: String::new(), group: None, turn: None }
         };
         let filler = "The weather was nice and we talked about many unrelated things. ".repeat(20);
         let excerpt = format!("[user] Tell me about my baking\n[assistant] {filler} Last week you baked sourdough bread with rye flour. {filler}");
@@ -1254,7 +1431,7 @@ mod tests {
         let hit = |id: &str, channel: &'static str, body: String| {
             let mut memory = Memory::episode(id, Some("q"), body, None);
             memory.kind = if channel == "episode" { "episode".into() } else { "fact".into() };
-            Hit { memory, channel, score: 0.5, reason: String::new(), group: None }
+            Hit { memory, channel, score: 0.5, reason: String::new(), group: None, turn: None }
         };
         let reply = format!("[user] Write a script about Andy\n[assistant] {} Andy wore an untidy, stained white shirt. {}", "Scene one. ".repeat(40), "The end. ".repeat(20));
         let hits = vec![hit("mem_a", "search", "The user writes scripts.".into()), hit("ep_1", "episode", reply.clone())];
@@ -1315,6 +1492,68 @@ mod tests {
         drop(store);
         let reopened = Store::open(dir.path()).unwrap();
         assert!(search(&reopened, Mode::Search, Some("q")).iter().any(|h| h.channel == "episode"));
+    }
+
+    #[test]
+    fn user_messages_are_numbered_in_conversation_order_and_survive_a_reopen() {
+        let (dir, store) = store();
+        let sessions = [
+            ("q:b1-0", "2024/05/02", vec!["My grocery budget is $500 per month.", "I secured 3 interviews for producer roles."]),
+            ("q:b1-1", "2024/05/02", vec!["Update: I secured 5 interviews for producer roles.", "The grocery budget is now $550."]),
+        ];
+        for (key, date, user) in &sessions {
+            let messages: Vec<Value> = user
+                .iter()
+                .flat_map(|text| [json!({"role":"user","content":text}), json!({"role":"assistant","content":"Noted."})])
+                .collect();
+            store.ingest_session(key, "bench", Some("q"), &messages, Some(date)).unwrap();
+            let session = store.session(key).unwrap().unwrap();
+            let entries = crate::extract::transcript(&store, &session).unwrap().entries;
+            store.add_episodes(&session, &entries).unwrap();
+        }
+        let log = |store: &Store, text: &str| turn_log(store, text, Some("q"), TURN_LOG_CHARS).unwrap().unwrap().memory.body;
+        let whole = log(&store, "How many interviews have I secured in total?");
+        assert!(whole.contains("all 4"), "{whole}");
+        let first = whole.find("#2 [2024/05/02] I secured 3 interviews").expect("numbered");
+        assert!(first < whole.find("#3 [2024/05/02] Update: I secured 5 interviews").unwrap(), "{whole}");
+        let few = log(&store, "What is my grocery budget?");
+        assert!(few.contains("most relevant") && few.contains("#4 [2024/05/02] The grocery budget is now $550."), "{few}");
+        let hits = recall(&store, &Query { text: Some("interviews"), project: Some("q"), limit: 5, mode: Mode::Search, episodes: 4, ..Default::default() }).unwrap();
+        assert!(hits.iter().filter(|h| h.channel == "episode").all(|h| h.turn.is_some()), "excerpts carry their turn");
+        // The gist of a reply is stored with extraction (`save_turn_notes`), matched by the user's words.
+        let session = store.session("q:b1-1").unwrap().unwrap();
+        let user_texts = vec!["Update: I secured 5 interviews for producer roles.".to_string(), "The grocery budget is now $550.".to_string()];
+        let turns = vec![json!({"n": 2, "assistant": "Suggested splitting the $550 into weekly $137.50 envelopes."}), json!({"n": 9, "assistant": "out of range"})];
+        assert_eq!(crate::extract::save_turn_notes(&store, &session, &user_texts, &turns).unwrap(), 1);
+        let summary = "Can you summarize how my budget and job search progressed?";
+        let noted = log(&store, summary);
+        assert!(noted.contains("#4 [2024/05/02] The grocery budget is now $550. → Assistant: Suggested splitting the $550 into weekly $137.50 envelopes."), "{noted}");
+        assert!(!log(&store, "How many interviews have I secured in total?").contains("Assistant:"), "a count reads the user's own words only");
+        assert!(ranked_turns(&store, "weekly envelopes", None, Some("q")).is_empty(), "the index holds the user's words only");
+        drop(store);
+        let reopened = Store::open(dir.path()).unwrap();
+        assert_eq!(log(&reopened, summary), noted, "the same numbering and notes after a reopen");
+    }
+
+    #[test]
+    fn contradictions_are_raised_only_for_yes_no_questions() {
+        let (_dir, store) = store();
+        for filler in ["The user adopted a cat named Miso.", "The user moved to Lisbon in May.", "The user plays tennis on Sundays."] {
+            add(&store, filler, "fact", "q", None);
+        }
+        let did = add(&store, "The user attended a budgeting workshop led by Tamara.", "fact", "q", None);
+        let never = add(&store, "The user has never attended any budgeting workshop.", "fact", "q", None);
+        for (id, other) in [(&did, &never), (&never, &did)] {
+            let mut memory = store.memory(id).unwrap();
+            memory.status = "contested".into();
+            memory.conflicts_with = vec![other.clone()];
+            store.save_memory(&memory, "contest").unwrap();
+        }
+        let search = |text: &str| recall(&store, &Query { text: Some(text), project: Some("q"), limit: 5, mode: Mode::Search, ..Default::default() }).unwrap();
+        assert_eq!(search("Have I ever attended a budgeting workshop?")[0].channel, "conflict");
+        assert!(search("How many budgeting workshops did I attend?").iter().all(|h| h.channel != "conflict"));
+        assert!(intent("Have I integrated Flask-Login?").yes_no && intent("Did I finish the draft?").yes_no);
+        assert!(!intent("How many days did I spend?").yes_no && !intent("What have I done?").yes_no);
     }
 
     #[test]

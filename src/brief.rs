@@ -1,48 +1,54 @@
 //! Memory brief: instead of handing a reader dozens of loose memories and excerpts, one
-//! model call reads a generous retrieval (about BRIEF_GATHER_TOKENS) and writes what the
-//! question needs: the relevant facts in date order, worked-out counts and date
-//! differences, the current value of things that changed, contradictions in what the user
-//! said, the standing instructions that apply, and a plain statement when the memory has
-//! nothing on the point. The brief leads the result; the evidence follows in the rest of
-//! the budget, since a brief can miss a detail. Optional (`brief=true` on recall): it
-//! costs one model call per search.
+//! model call reads a generous retrieval (about BRIEF_GATHER_TOKENS, plus the user's own
+//! messages in conversation order) and writes what the question needs: the relevant facts
+//! in order, worked-out counts and date differences (the day count checked against the
+//! calendar), the current value of things that changed, contradictions when asked whether
+//! something is so, the standing instructions that apply, and a plain statement when the
+//! memory has nothing on the point. The brief leads the result; the evidence follows in
+//! the rest of the budget, since a brief can miss a detail. Optional (`brief=true` on
+//! recall): it costs one model call per search.
 use crate::{
     llm,
     recall::{self, Hit},
     store::Store,
 };
 use anyhow::Result;
+use chrono::NaiveDate;
+use regex::Regex;
 use serde_json::json;
-use std::time::Duration;
+use std::{sync::LazyLock, time::Duration};
 
 /// Tokens of material gathered for a brief.
 pub const BRIEF_GATHER_TOKENS: usize = 12_000;
 /// Candidates and conversation excerpts gathered for a brief.
 pub const BRIEF_LIMIT: usize = 50;
 pub const BRIEF_EPISODES: usize = 12;
-/// Size of a brief when the caller gives no budget (tokens).
+/// Size of a brief when the caller gives no budget (tokens), and at most for an account
+/// of how things went, whose details would not fit in the shorter brief.
 pub const BRIEF_TOKENS: usize = 800;
+pub const SUMMARY_BRIEF_TOKENS: usize = 2_000;
 
-const PROMPT: &str = "You prepare a memory brief for an assistant that is about to answer the user's question. You get the question, today's date when known, and material retrieved from the user's long-term memory: standing instructions from the user, unresolved contradictions, a timeline of past conversations, memories (each with the date it was said, and where known the event date, earlier values, and how often it came up) and raw conversation excerpts.
+const PROMPT: &str = "You prepare a memory brief for an assistant that is about to answer the user's question. You get the question, today's date when known, and material from the user's long-term memory: standing instructions from the user, unresolved contradictions (only when the question asks whether something is so), a timeline of past conversations, the user's own messages in conversation order (each may be followed by \"→ Assistant:\" and the gist of the reply), memories (each with the date it was said, and where known the event date, earlier values and how often it came up) and raw conversation excerpts. Turn numbers (#) give the order of the conversation: a higher number is later, also on the same date.
 
 Write the brief: everything in the material that the answer needs, and nothing else.
-- When the question has a short factual answer (a count, a date or duration, a value, a name, yes or no), begin with one line \"Answer: ...\": the direct answer as a full sentence that carries what it rests on, so that it can be repeated as it stands: a count names the items counted (\"Two columns: 'category' and 'notes'\"), a date difference names both dates (\"21 days, from March 15, 2024 to April 5, 2024\"), a value says since when. Commit to the one best-supported answer; do not offer alternatives (\"or 5 if...\") unless the user's own statements contradict each other. When the question asks for a summary, an explanation, advice, a plan or how to do something, write no answer line: the assistant composes that answer itself from the facts, instructions and preferences below.
-- State the relevant facts with their dates, oldest first, keeping names, numbers, dates and wording exact.
-- For a count or a total: count exactly what the question asks for. When it asks what the user mentioned, asked or did, count the user's own statements, not the assistant's suggestions or examples; leave out near matches and repeats of the same item. List the counted items with their dates.
-- For a date difference or a duration: use the dates of the two events themselves (event dates, or dates stated in the text), not the dates on which they were talked about. Give the difference in the unit asked.
-- For an order of things the user brought up: follow the conversations from the first to the last, not only the beginning.
-- When a value changed over time (a moved deadline, a raised budget, a new count), that is an update, not a contradiction. The answer is the most recent value (a statement that explicitly changes the value, such as \"raised to\" or \"moved to\", outweighs an older figure repeated in passing), then what it was before and when it changed. Give the one value asked for, not every related figure.
-- A contradiction is an \"Unresolved contradiction\" item in the material, or the user denying something they also reported (\"I have never done X\" against an account of doing X) with no change described; different values of one thing over time are never one. When what is asked is contradicted in this way, the answer line says so, quotes both statements with their dates and notes that the user should be asked which one is correct; do not pick a side.
+- When the question has a short factual answer (a count, a date or duration, a value, a name, yes or no), begin with one line \"Answer: ...\": the direct answer as a full sentence that carries what it rests on, so that it can be repeated as it stands: a count names the items counted (\"Two columns: 'category' and 'notes'\"), a date difference names both dates (\"21 days, from March 15, 2024 to April 5, 2024\"), a value says since when. Commit to the one best-supported answer; do not offer alternatives (\"or 5 if...\"). When the memory has nothing on what is asked, the answer line is \"The memory contains no information about <what is missing>.\" When the question asks for a summary, an explanation, advice, a plan or how to do something, write no answer line: the assistant composes that answer itself from the facts, instructions and preferences below.
+- State the relevant facts with their dates and turn numbers, in conversation order, keeping names, numbers, dates and wording exact.
+- For a count or a total: the user's own messages are the record of what they mentioned, asked, did or planned. Count each distinct item of the kind asked once (numbers the user stated count as stated, e.g. the ways they computed); count the assistant's suggestions only when the question asks about them. List the counted items with their turn numbers.
+- For a date difference or a duration: use the dates of the two events themselves (\"planning a peer review for April 2\" gives April 2; an event date; a date stated in the text), not the dates on which they were talked about.
+- When a value changed (a moved deadline, a raised budget, a new count), that is an update, not a contradiction: the answer is the value in the latest statement (highest turn number), then what it was before. Give the one value asked for.
+- Raise a contradiction only when the question asks whether something happened or is true (yes/no) and the material has an \"Unresolved contradiction\" item, or the user's own messages both deny and report it with no change described: then the answer line says the records contradict each other, quotes both statements with their dates and says the user should be asked which one is correct. For a count, a date, an amount, a summary or advice, use all the statements and do not raise it.
+- For the order in which the user brought things up: go through the user's own messages from the first turn to the last and name what they brought up at points spread over the whole record, in order, not only at the beginning.
 - List the user's standing instructions that apply to this kind of question under \"Instructions to follow in the answer:\", and the user's preferences that bear on it (tools, formats, styles they like or avoid) under \"Preferences to respect:\".
 - For a summary or an account of how something progressed, cover the whole span from the first conversation to the last, including what the assistant recommended.
-- Read the conversation excerpts as closely as the memories: a detail asked for may appear only there. Only when nothing in the material states what is asked, write: \"The memory contains no information about <what is missing>.\" Do not fill the gap with related facts or guesses.
+- Read the user's messages and the conversation excerpts as closely as the memories: a detail asked for may appear only there. Do not fill a gap with related facts or guesses.
+- Before answering, check that the material states the very thing asked. What the user did, used, enforced, outlined or decided comes from the user's own words (their messages, or what they reported adopting); what a named person (Jake, a mentor, users giving feedback) advised or shared comes from that person as the user reported it; the assistant's own suggestions are neither, unless the question asks what the assistant suggested. When the material covers the topic but not the detail asked (the criteria, the rationale, the format, the specific items), the answer line is \"The memory contains no information about <the detail asked>.\" followed by what is known nearby.
 
 Plain text, no preamble, at most WORDS words.";
 
 /// One retrieved item as the brief writer sees it.
 fn render(store: &Store, hit: &Hit) -> String {
     let memory = &hit.memory;
-    if matches!(hit.channel, "timeline" | "conflict") {
+    if matches!(hit.channel, "timeline" | "conflict" | "turnlog") {
         return memory.body.clone();
     }
     let date = memory
@@ -58,9 +64,10 @@ fn render(store: &Store, hit: &Hit) -> String {
     };
     // The date of the event itself leads: a reader asked how long passed between two
     // events otherwise subtracts the dates of the conversations.
+    let turn = hit.turn.map(|t| format!("; turn #{t}")).unwrap_or_default();
     let mut text = match &memory.event_at {
-        Some(event) => format!("[event date {event}; said {date}] {label}{}", memory.body),
-        None => format!("[said {date}] {label}{}", memory.body),
+        Some(event) => format!("[event date {event}; said {date}{turn}] {label}{}", memory.body),
+        None => format!("[said {date}{turn}] {label}{}", memory.body),
     };
     if !memory.mentioned_at.is_empty() {
         text.push_str(&format!(
@@ -92,5 +99,79 @@ pub async fn brief(store: &Store, question: &str, today: Option<&str>, hits: &[H
         Duration::from_secs(180),
     )
     .await?;
-    Ok(reply.trim().to_owned())
+    Ok(check_days(reply.trim()))
+}
+
+static DAYS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b(\d{1,4})\s+days?\b").unwrap());
+static NAMED_DATE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s+(\d{4}))?").unwrap()
+});
+static NUMERIC_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b").unwrap());
+
+/// Dates named in `text` in order of appearance: (year if given, month, day).
+fn dates(text: &str) -> Vec<(Option<i32>, u32, u32)> {
+    const MONTHS: [&str; 12] = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    let mut found: Vec<(usize, (Option<i32>, u32, u32))> = vec![];
+    for c in NAMED_DATE.captures_iter(text) {
+        let month = MONTHS.iter().position(|m| c[1].eq_ignore_ascii_case(m)).unwrap() as u32 + 1;
+        let day = c[2].parse().unwrap_or(0);
+        let year = c.get(3).and_then(|y| y.as_str().parse().ok());
+        found.push((c.get(0).unwrap().start(), (year, month, day)));
+    }
+    for c in NUMERIC_DATE.captures_iter(text) {
+        found.push((c.get(0).unwrap().start(), (c[1].parse().ok(), c[2].parse().unwrap_or(0), c[3].parse().unwrap_or(0))));
+    }
+    found.sort_by_key(|f| f.0);
+    found.into_iter().map(|f| f.1).collect()
+}
+
+/// Language models slip in calendar arithmetic ("67 days, from July 10 to September 12"):
+/// when the answer line gives one day count and names two dates, the count is set to the
+/// days between them.
+fn check_days(brief: &str) -> String {
+    let Some(start) = brief.find("Answer:") else { return brief.to_owned() };
+    let end = brief[start..].find('\n').map_or(brief.len(), |i| start + i);
+    let line = &brief[start..end];
+    let counts: Vec<regex::Captures> = DAYS.captures_iter(line).collect();
+    let named = dates(line);
+    if counts.len() != 1 || named.len() < 2 {
+        return brief.to_owned();
+    }
+    let ((y1, m1, d1), (y2, m2, d2)) = (named[0], named[1]);
+    let (Some(y1), Some(y2)) = (y1.or(y2), y2.or(y1)) else { return brief.to_owned() };
+    let (Some(first), Some(mut second)) = (NaiveDate::from_ymd_opt(y1, m1, d1), NaiveDate::from_ymd_opt(y2, m2, d2)) else {
+        return brief.to_owned();
+    };
+    // "December 20 to January 5" without years crosses into the next year.
+    if second < first && named[1].0.is_none() {
+        second = NaiveDate::from_ymd_opt(y2 + 1, m2, d2).unwrap_or(second);
+    }
+    let days = (second - first).num_days().unsigned_abs();
+    let stated: u64 = counts[0][1].parse().unwrap_or(days);
+    if stated == days {
+        return brief.to_owned();
+    }
+    let span = counts[0].get(0).unwrap();
+    let fixed = format!("{days} {}", if days == 1 { "day" } else { "days" });
+    let (from, to) = (start + span.start(), start + span.end());
+    format!("{}{}{}", &brief[..from], fixed, &brief[to..])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn day_counts_follow_the_calendar() {
+        let wrong = "Answer: 67 days passed, from July 10, 2024 to September 12, 2024.\nRelevant facts: ...";
+        assert_eq!(check_days(wrong), "Answer: 64 days passed, from July 10, 2024 to September 12, 2024.\nRelevant facts: ...");
+        assert_eq!(check_days("Answer: 16 days, from April 5 to April 21, 2024."), "Answer: 16 days, from April 5 to April 21, 2024.");
+        assert_eq!(check_days("Answer: 2 days (2024-03-10 to 2024-03-12)."), "Answer: 2 days (2024-03-10 to 2024-03-12).");
+        assert_eq!(check_days("Answer: 3 days from 2024-03-12 to 2024-03-30"), "Answer: 18 days from 2024-03-12 to 2024-03-30");
+        assert_eq!(check_days("Answer: 5 days, from December 30, 2023 to January 4"), "Answer: 5 days, from December 30, 2023 to January 4");
+        assert_eq!(check_days("Answer: 5 days or 3 days, from May 10 to May 15, 2024"), "Answer: 5 days or 3 days, from May 10 to May 15, 2024", "two counts: left alone");
+        assert_eq!(check_days("Answer: 8 weeks, from January 15 to March 15, 2024"), "Answer: 8 weeks, from January 15 to March 15, 2024", "weeks: left alone");
+        assert_eq!(check_days("No answer line: 67 days, from July 10, 2024 to September 12, 2024"), "No answer line: 67 days, from July 10, 2024 to September 12, 2024");
+        assert_eq!(check_days("Answer: 2 days from May 1 to April 30, 2024"), "Answer: 1 day from May 1 to April 30, 2024");
+    }
 }

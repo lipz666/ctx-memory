@@ -213,6 +213,13 @@ pub struct RecallParams {
     /// Search mode: put a brief written for the question from a wide retrieval (one model
     /// call) before the hits; `budget` covers the brief (at most 40% of it) and the hits.
     brief: Option<bool>,
+    /// Search mode: add the user's own messages in conversation order (all of them for
+    /// questions about how things went, in what order or how often; else the most
+    /// relevant), within the budget. A brief always reads them.
+    turns: Option<bool>,
+    /// With `brief`: return the material the brief would be written from instead of
+    /// writing it (no model call; for inspecting retrieval).
+    dry_run: Option<bool>,
 }
 pub async fn recall(
     State(app): State<App>,
@@ -240,7 +247,9 @@ pub async fn recall(
         params.episodes = Some(crate::brief::BRIEF_EPISODES);
         params.budget = Some(crate::brief::BRIEF_GATHER_TOKENS);
     }
-    let hits = tokio::task::spawn_blocking(move || {
+    let turns = params.turns == Some(true) && !brief;
+    let params_dry_run = params.dry_run == Some(true);
+    let (hits, log) = tokio::task::spawn_blocking(move || -> anyhow::Result<(Vec<recall::Hit>, Option<recall::Hit>)> {
         let query = Query {
                 text: Some(&params.q),
                 project: params.project.as_deref(),
@@ -255,24 +264,42 @@ pub async fn recall(
                     .unwrap_or(store.config.recall.search_episodes)
                     .min(20),
                 budget: params.budget,
+                turns,
                 ..Default::default()
             };
-        match &plan {
-            Some(plan) => recall::recall_planned(&store, &query, plan),
-            None => recall::recall(&store, &query),
-        }
+        let hits = match &plan {
+            Some(plan) => recall::recall_planned(&store, &query, plan)?,
+            None => recall::recall(&store, &query)?,
+        };
+        // A brief reads the user's own messages besides the gathered hits.
+        let log = if brief {
+            recall::turn_log(&store, &params.q, params.project.as_deref(), recall::TURN_LOG_CHARS)?
+        } else {
+            None
+        };
+        Ok((hits, log))
     })
     .await
     .map_err(api_error)?
     .map_err(api_error)?;
+    let yes_no = recall::intent(&question).yes_no;
+    let dry_run = brief && params_dry_run;
     // The brief comes first, then the evidence it was written from, packed into the rest
     // of the budget (a brief can miss a detail). Without a brief (the model call failed)
     // the hits are returned packed as usual.
     let mut lead = vec![];
-    let hits = if brief {
+    let hits = if dry_run {
+        log.into_iter().chain(hits).collect()
+    } else if brief {
         let total = brief_tokens.unwrap_or(crate::brief::BRIEF_TOKENS * 5 / 2);
-        let tokens = (total * 2 / 5).min(crate::brief::BRIEF_TOKENS);
-        match crate::brief::brief(&app.store, &question, today.as_deref(), &hits, tokens).await {
+        let cap = if recall::summary_question(&recall::intent(&question)) {
+            crate::brief::SUMMARY_BRIEF_TOKENS
+        } else {
+            crate::brief::BRIEF_TOKENS
+        };
+        let tokens = (total * 2 / 5).min(cap);
+        let material: Vec<recall::Hit> = log.into_iter().chain(hits.iter().cloned()).collect();
+        match crate::brief::brief(&app.store, &question, today.as_deref(), &material, tokens).await {
             Ok(text) => {
                 let used = text.chars().count() / 4 + 12;
                 lead.push(json!({"id":"brief","title":"Memory brief","content":text,"type":"brief","channel":"brief","score":1.0,"sources":hits.len()}));
@@ -283,7 +310,7 @@ pub async fn recall(
     } else {
         hits
     };
-    Ok(axum::Json(json!(lead.into_iter().chain(hits.iter().map(|h| json!({"id":h.memory.id,"title":h.memory.title,"content":h.memory.body,"type":h.memory.kind,"scope":h.memory.scope,"score":h.score,"channel":h.channel,"group":h.group,"observed_at":h.memory.observed_at,"event_at":h.memory.event_at,"topics":h.memory.topics,"history":recall::history(&app.store, &h.memory, 3).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"conflicts":recall::conflicts(&app.store, &h.memory).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"mentioned":if matches!(h.channel, "episode" | "timeline" | "conflict") || h.memory.derived() { serde_json::Value::Null } else { json!(recall::mention_rank(&app.store, &h.memory)) },"status":h.memory.status,"mentioned_at":h.memory.mentioned_at,"created_at":h.memory.created_at}))).collect::<Vec<_>>())))
+    Ok(axum::Json(json!(lead.into_iter().chain(hits.iter().map(|h| json!({"id":h.memory.id,"title":h.memory.title,"content":h.memory.body,"type":h.memory.kind,"scope":h.memory.scope,"score":h.score,"channel":h.channel,"group":h.group,"observed_at":h.memory.observed_at,"event_at":h.memory.event_at,"topics":h.memory.topics,"history":recall::history(&app.store, &h.memory, 3).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"conflicts":if yes_no { recall::conflicts(&app.store, &h.memory).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>() } else { vec![] },"turn":h.turn,"mentioned":if matches!(h.channel, "episode" | "timeline" | "conflict" | "turnlog" | "turn") || h.memory.derived() { serde_json::Value::Null } else { json!(recall::mention_rank(&app.store, &h.memory)) },"status":h.memory.status,"mentioned_at":h.memory.mentioned_at,"created_at":h.memory.created_at}))).collect::<Vec<_>>())))
 }
 pub async fn step(State(app): State<App>, Path(id): Path<String>, headers: HeaderMap) -> ApiResult {
     require(&headers, &app.store)?;

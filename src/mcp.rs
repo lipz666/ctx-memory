@@ -136,7 +136,7 @@ fn call_tool(store: &Store, project: Option<&str>, params: &Value) -> Value {
             }
             // Hits of one topic share a group and are in chronological order; the date
             // tells which value is current.
-            Ok(json!(hits.iter().map(|h| json!({"id":h.memory.id,"type":h.memory.kind,"scope":h.memory.scope,"date":h.memory.observed_at.as_deref().unwrap_or(&h.memory.created_at),"event_date":h.memory.event_at,"group":h.group,"previously":recall::history(store, &h.memory, 3).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"conflicts_with":recall::conflicts(store, &h.memory).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"status":h.memory.status,"mentioned_again":h.memory.mentioned_at,"content":h.memory.body,"score":(h.score*100.0).round()/100.0})).collect::<Vec<_>>()))
+            Ok(json!(hits.iter().map(|h| json!({"id":h.memory.id,"type":h.memory.kind,"scope":h.memory.scope,"date":h.memory.observed_at.as_deref().unwrap_or(&h.memory.created_at),"event_date":h.memory.event_at,"group":h.group,"turn":h.turn,"previously":recall::history(store, &h.memory, 3).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"conflicts_with":recall::conflicts(store, &h.memory).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"status":h.memory.status,"mentioned_again":h.memory.mentioned_at,"content":h.memory.body,"score":(h.score*100.0).round()/100.0})).collect::<Vec<_>>()))
         }
         "remember" => {
             let content = arg(args, "content")?;

@@ -113,15 +113,17 @@ def render(hit):
     label = {"preference": "(the user's preference) ",
              "instruction": "(the user's standing instruction for the assistant; apply it to this answer) ",
              "reflection": "(summary of what the user has shared about this topic) "}.get(hit.get("type"), "")
-    if hit.get("type") in ("timeline", "conflict", "brief"):
+    if hit.get("type") in ("timeline", "conflict", "brief", "turnlog"):
         return hit["content"]
     if hit.get("status") == "superseded":
         label = "(earlier statement, changed later) " + label
     said = hit.get('observed_at') or hit.get('created_at') or ''
     # The date of the event itself leads; "said" is when the conversation took place.
     dates = f"event date {hit['event_at']}; said {said}" if hit.get("event_at") else said
+    if hit.get("turn"):
+        dates += f"; turn #{hit['turn']}"
     text = f"[{dates}] {label}{hit['content']}"
-    if hit.get("mentioned"):
+    if hit.get("mentioned") and not hit.get("turn"):
         text = text.replace("] ", f"; mention #{hit['mentioned']}] ", 1)
     again = hit.get("mentioned_at") or []
     if again:
@@ -142,7 +144,7 @@ def namespace(ns):
 class Ctx(MemorySystem):
     """ctx with its built-in extraction prompt (tuned for coding work), or a variant prompt."""
 
-    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None, brief=False):
+    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None, brief=False, turns=False):
         self.name = name
         self.failed_sessions = []
         self.mode = mode
@@ -153,6 +155,8 @@ class Ctx(MemorySystem):
         self.budget = budget
         # One model call turns a wide retrieval into a brief for the question.
         self.brief = brief
+        # Add the user's own messages in conversation order (within the budget).
+        self.turns = turns
         # Reuse another variant's memory store (same memories, no new extraction) and only
         # build the conversation excerpts; ingestion then does nothing.
         self.reuse_from = reuse_from
@@ -218,6 +222,8 @@ class Ctx(MemorySystem):
             args["budget"] = int(self.budget * 0.9)
         if self.brief:
             args["brief"] = "true"
+        if self.turns:
+            args["turns"] = "true"
         hits = self.service.request(f"/api/v1/recall?{urllib.parse.urlencode(args)}")
         return [(render(h), h["score"]) for h in hits]
 

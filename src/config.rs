@@ -142,6 +142,11 @@ pub struct ExtractionConfig {
     /// similar memories and link the pairs that cannot both be true (both kept, contested).
     /// Costs one small call per session that has such a candidate pair.
     pub contradictions: bool,
+    /// Have the extractor also write the gist of each reply (stored per turn, shown with
+    /// the user's messages for summaries and "what did you recommend"). Off: on BEAM 100K
+    /// it cost about 5% of the extracted facts (contradictions and updates suffered more
+    /// than summaries gained); outlines taken from the replies without a model are used.
+    pub turn_notes: bool,
 }
 impl Default for ExtractionConfig {
     fn default() -> Self {
@@ -155,6 +160,7 @@ impl Default for ExtractionConfig {
             reflection: false,
             known_entities: false,
             contradictions: true,
+            turn_notes: false,
         }
     }
 }
