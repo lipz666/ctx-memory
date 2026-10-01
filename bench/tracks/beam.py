@@ -113,9 +113,11 @@ def make_system(name, workdir, budget):
         # The memory store of the named run (ctx-beam-v3-reanswer-8k reuses ctx-beam-v3),
         # answered again (e.g. with another --budget); no extraction.
         base = name.split("-reanswer")[0]
-        # ...-reanswer-brief: ctx writes a brief for each question (one model call).
+        # ...-reanswer-brief: ctx writes a brief for each question (one model call);
+        # ...-reanswer-agent: the brief writer may call tools over the memory first.
+        agent = name.endswith("-agent")
         return Ctx(workdir / f"{name}-home", name=name, prompt_file=prompt, episodes=max(5, budget // 800),
-                   budget=budget, reuse_from=workdir / f"{base}-home", brief=name.endswith("-brief"))
+                   budget=budget, reuse_from=workdir / f"{base}-home", brief=name.endswith("-brief") or agent, agent=agent)
     if name == "ctx-beam" or name.startswith("ctx-beam-v"):
         # ctx-beam-vN: the same configuration on a newer engine (run with CTX_BIN), kept apart.
         return Ctx(workdir / f"{name}-home", name=name, prompt_file=prompt, episodes=5, budget=budget)

@@ -220,6 +220,10 @@ pub struct RecallParams {
     /// With `brief`: return the material the brief would be written from instead of
     /// writing it (no model call; for inspecting retrieval).
     dry_run: Option<bool>,
+    /// With `brief`: the writer may call tools over the memory (search, the user's
+    /// messages, whole turns, the timeline, a day calculator) before writing; more model
+    /// calls on questions that need checking (see `agent.rs`).
+    agent: Option<bool>,
 }
 pub async fn recall(
     State(app): State<App>,
@@ -249,6 +253,8 @@ pub async fn recall(
     }
     let turns = params.turns == Some(true) && !brief;
     let params_dry_run = params.dry_run == Some(true);
+    let use_agent = brief && params.agent == Some(true);
+    let project = params.project.clone();
     let (hits, log) = tokio::task::spawn_blocking(move || -> anyhow::Result<(Vec<recall::Hit>, Option<recall::Hit>)> {
         let query = Query {
                 text: Some(&params.q),
@@ -299,10 +305,15 @@ pub async fn recall(
         };
         let tokens = (total * 2 / 5).min(cap);
         let material: Vec<recall::Hit> = log.into_iter().chain(hits.iter().cloned()).collect();
-        match crate::brief::brief(&app.store, &question, today.as_deref(), &material, tokens).await {
-            Ok(text) => {
+        let written = if use_agent {
+            crate::agent::brief(app.store.clone(), &question, today.as_deref(), project, &material, tokens).await
+        } else {
+            crate::brief::brief(&app.store, &question, today.as_deref(), &material, tokens).await.map(|text| (text, vec![]))
+        };
+        match written {
+            Ok((text, steps)) => {
                 let used = text.chars().count() / 4 + 12;
-                lead.push(json!({"id":"brief","title":"Memory brief","content":text,"type":"brief","channel":"brief","score":1.0,"sources":hits.len()}));
+                lead.push(json!({"id":"brief","title":"Memory brief","content":text,"type":"brief","channel":"brief","score":1.0,"sources":hits.len(),"steps":steps}));
                 recall::pack(hits, &question, total.saturating_sub(used))
             }
             Err(_) => recall::pack(hits, &question, total),

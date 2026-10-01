@@ -144,7 +144,7 @@ def namespace(ns):
 class Ctx(MemorySystem):
     """ctx with its built-in extraction prompt (tuned for coding work), or a variant prompt."""
 
-    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None, brief=False, turns=False):
+    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None, brief=False, turns=False, agent=False):
         self.name = name
         self.failed_sessions = []
         self.mode = mode
@@ -157,6 +157,8 @@ class Ctx(MemorySystem):
         self.brief = brief
         # Add the user's own messages in conversation order (within the budget).
         self.turns = turns
+        # The brief writer may call tools over the memory before writing.
+        self.agent = agent
         # Reuse another variant's memory store (same memories, no new extraction) and only
         # build the conversation excerpts; ingestion then does nothing.
         self.reuse_from = reuse_from
@@ -224,6 +226,8 @@ class Ctx(MemorySystem):
             args["brief"] = "true"
         if self.turns:
             args["turns"] = "true"
+        if self.agent:
+            args["agent"] = "true"
         hits = self.service.request(f"/api/v1/recall?{urllib.parse.urlencode(args)}")
         return [(render(h), h["score"]) for h in hits]
 

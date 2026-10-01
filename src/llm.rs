@@ -23,13 +23,25 @@ pub async fn chat(
     max_tokens: u32,
     timeout: Duration,
 ) -> Result<String> {
+    let messages = [json!({"role":"system","content":system}), json!({"role":"user","content":user})];
+    chat_messages(store, role, &messages, max_tokens, timeout).await
+}
+
+/// A chat completion over a whole conversation (system, user and assistant messages), with
+/// the same budget, logging and retries as `chat`.
+pub async fn chat_messages(
+    store: &Store,
+    role: &str,
+    messages: &[Value],
+    max_tokens: u32,
+    timeout: Duration,
+) -> Result<String> {
     let Some(model) = store.config.model.as_ref() else {
         bail!("no model configured (ctx model set)");
     };
     let key = credential(&model.credential_ref)?;
     let url = format!("{}/chat/completions", model.base_url.trim_end_matches('/'));
-    let body = json!({"model":model.model,"temperature":0,"max_tokens":max_tokens,
-        "messages":[{"role":"system","content":system},{"role":"user","content":user}]});
+    let body = json!({"model":model.model,"temperature":0,"max_tokens":max_tokens,"messages":messages});
     let attempts = if role == "gate" { 1 } else { 4 };
     let mut last_error = anyhow::anyhow!("no attempt made");
     for attempt in 0..attempts {
@@ -82,7 +94,11 @@ pub async fn chat(
         // retried like a transient failure.
         match raw.pointer("/choices/0/message/content").and_then(Value::as_str) {
             Some(content) if !content.trim().is_empty() => return Ok(content.to_owned()),
-            _ => last_error = anyhow::anyhow!("model reply had no content"),
+            _ => {
+                let shown: String = raw.to_string().chars().take(600).collect();
+                eprintln!("{role}: model reply had no content: {shown}");
+                last_error = anyhow::anyhow!("model reply had no content");
+            }
         }
     }
     Err(last_error)

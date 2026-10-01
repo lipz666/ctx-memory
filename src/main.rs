@@ -1,4 +1,5 @@
 mod adapters;
+mod agent;
 mod api;
 mod brief;
 mod config;

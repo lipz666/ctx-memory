@@ -902,7 +902,7 @@ pub fn summary_question(wanted: &Intent) -> bool {
 }
 
 /// The user's messages in scope ranked by relevance to `text`: (turn id, score).
-fn ranked_turns(store: &Store, text: &str, vector: Option<&[f32]>, project: Option<&str>) -> Vec<(String, f32)> {
+pub(crate) fn ranked_turns(store: &Store, text: &str, vector: Option<&[f32]>, project: Option<&str>) -> Vec<(String, f32)> {
     store.with_episodes(|e| {
         hybrid(&e.turns, &store.config.recall, true, text, vector, e.turn_meta.len().max(1), |id| e.turn_in_scope(id, project), 0.0)
             .into_iter()
@@ -1028,7 +1028,7 @@ fn conflict_notes(store: &Store, hits: &mut Vec<Hit>) {
 /// The conversation timeline: one line per session summary in the scope, oldest first,
 /// within `chars`. When every line cannot keep TIMELINE_LINE_MIN characters, the lines
 /// most relevant to `text` are kept (still in order).
-fn timeline(store: &Store, text: &str, project: Option<&str>, chars: usize) -> Result<Option<Hit>> {
+pub(crate) fn timeline(store: &Store, text: &str, project: Option<&str>, chars: usize) -> Result<Option<Hit>> {
     let vector = match store.embedder.get() {
         Some(embedder) => Some(embedder.embed_query(text)?),
         None => None,

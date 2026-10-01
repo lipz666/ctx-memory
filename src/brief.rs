@@ -28,9 +28,11 @@ pub const BRIEF_EPISODES: usize = 12;
 pub const BRIEF_TOKENS: usize = 800;
 pub const SUMMARY_BRIEF_TOKENS: usize = 2_000;
 
-const PROMPT: &str = "You prepare a memory brief for an assistant that is about to answer the user's question. You get the question, today's date when known, and material from the user's long-term memory: standing instructions from the user, unresolved contradictions (only when the question asks whether something is so), a timeline of past conversations, the user's own messages in conversation order (each may be followed by \"→ Assistant:\" and the gist of the reply), memories (each with the date it was said, and where known the event date, earlier values and how often it came up) and raw conversation excerpts. Turn numbers (#) give the order of the conversation: a higher number is later, also on the same date.
+/// What the brief writer gets (the first paragraph of its prompt).
+pub(crate) const MATERIAL: &str = "You prepare a memory brief for an assistant that is about to answer the user's question. You get the question, today's date when known, and material from the user's long-term memory: standing instructions from the user, unresolved contradictions (only when the question asks whether something is so), a timeline of past conversations, the user's own messages in conversation order (each may be followed by \"→ Assistant:\" and the gist of the reply), memories (each with the date it was said, and where known the event date, earlier values and how often it came up) and raw conversation excerpts. Turn numbers (#) give the order of the conversation: a higher number is later, also on the same date.";
 
-Write the brief: everything in the material that the answer needs, and nothing else.
+/// How the brief is written.
+pub(crate) const RULES: &str = "Write the brief: everything in the material that the answer needs, and nothing else.
 - When the question has a short factual answer (a count, a date or duration, a value, a name, yes or no), begin with one line \"Answer: ...\": the direct answer as a full sentence that carries what it rests on, so that it can be repeated as it stands: a count names the items counted (\"Two columns: 'category' and 'notes'\"), a date difference names both dates (\"21 days, from March 15, 2024 to April 5, 2024\"), a value says since when. Commit to the one best-supported answer; do not offer alternatives (\"or 5 if...\"). When the memory has nothing on what is asked, the answer line is \"The memory contains no information about <what is missing>.\" When the question asks for a summary, an explanation, advice, a plan or how to do something, write no answer line: the assistant composes that answer itself from the facts, instructions and preferences below.
 - State the relevant facts with their dates and turn numbers, in conversation order, keeping names, numbers, dates and wording exact.
 - For a count or a total: the user's own messages are the record of what they mentioned, asked, did or planned. Count each distinct item of the kind asked once (numbers the user stated count as stated, e.g. the ways they computed); count the assistant's suggestions only when the question asks about them. List the counted items with their turn numbers.
@@ -46,7 +48,7 @@ Write the brief: everything in the material that the answer needs, and nothing e
 Plain text, no preamble, at most WORDS words.";
 
 /// One retrieved item as the brief writer sees it.
-fn render(store: &Store, hit: &Hit) -> String {
+pub(crate) fn render(store: &Store, hit: &Hit) -> String {
     let memory = &hit.memory;
     if matches!(hit.channel, "timeline" | "conflict" | "turnlog") {
         return memory.body.clone();
@@ -87,13 +89,28 @@ fn render(store: &Store, hit: &Hit) -> String {
 /// The brief for `question` from `hits` (already packed to the gathering budget), in at
 /// most `tokens` tokens.
 pub async fn brief(store: &Store, question: &str, today: Option<&str>, hits: &[Hit], tokens: usize) -> Result<String> {
-    let material: Vec<String> = hits.iter().map(|hit| format!("- {}", render(store, hit))).collect();
+    brief_with(store, question, today, hits, "", tokens).await
+}
+
+/// `brief`, with what was looked up besides (`agent.rs`) at the end of the material.
+pub(crate) async fn brief_with(
+    store: &Store,
+    question: &str,
+    today: Option<&str>,
+    hits: &[Hit],
+    findings: &str,
+    tokens: usize,
+) -> Result<String> {
+    let mut material: Vec<String> = hits.iter().map(|hit| format!("- {}", render(store, hit))).collect();
+    if !findings.is_empty() {
+        material.push(format!("- Looked up in the memory for this question:\n{findings}"));
+    }
     let words = (tokens as f64 * 0.7) as usize;
     let input = json!({"question": question, "today": today, "material": material.join("\n")}).to_string();
     let reply = llm::chat(
         store,
         "brief",
-        &PROMPT.replace("WORDS", &words.to_string()),
+        &format!("{MATERIAL}\n\n{RULES}").replace("WORDS", &words.to_string()),
         &input,
         (tokens * 2).max(4000) as u32,
         Duration::from_secs(180),
@@ -109,7 +126,7 @@ static NAMED_DATE: LazyLock<Regex> = LazyLock::new(|| {
 static NUMERIC_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b").unwrap());
 
 /// Dates named in `text` in order of appearance: (year if given, month, day).
-fn dates(text: &str) -> Vec<(Option<i32>, u32, u32)> {
+pub(crate) fn dates(text: &str) -> Vec<(Option<i32>, u32, u32)> {
     const MONTHS: [&str; 12] = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
     let mut found: Vec<(usize, (Option<i32>, u32, u32))> = vec![];
     for c in NAMED_DATE.captures_iter(text) {
@@ -128,7 +145,7 @@ fn dates(text: &str) -> Vec<(Option<i32>, u32, u32)> {
 /// Language models slip in calendar arithmetic ("67 days, from July 10 to September 12"):
 /// when the answer line gives one day count and names two dates, the count is set to the
 /// days between them.
-fn check_days(brief: &str) -> String {
+pub(crate) fn check_days(brief: &str) -> String {
     let Some(start) = brief.find("Answer:") else { return brief.to_owned() };
     let end = brief[start..].find('\n').map_or(brief.len(), |i| start + i);
     let line = &brief[start..end];
