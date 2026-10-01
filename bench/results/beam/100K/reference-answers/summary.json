@@ -1,0 +1,29 @@
+{
+  "system": "reference-answers",
+  "questions": 320,
+  "conversations": 20,
+  "overall": 0.9477,
+  "abilities": {
+    "abstention": 1.0,
+    "contradiction_resolution": 0.9969,
+    "event_ordering": 0.6626,
+    "information_extraction": 0.9938,
+    "knowledge_update": 1.0,
+    "multi_session_reasoning": 0.9844,
+    "summarization": 1.0,
+    "temporal_reasoning": 0.9437
+  },
+  "errors": 0,
+  "tau_nan": 0,
+  "budget_tokens": null,
+  "kept_tokens_mean": 0,
+  "search_ms_p50": 0,
+  "wall_seconds": 263,
+  "usage": {
+    "reader_judge": {
+      "calls": 1122,
+      "input_tokens": 711125,
+      "output_tokens": 33997
+    }
+  }
+}

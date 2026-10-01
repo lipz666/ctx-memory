@@ -1,13 +1,18 @@
 """BEAM with perfect retrieval: each probing question is answered from its gold source
 messages only (the dataset's source_chat_ids, in conversation order and with their dates),
-with the official answer prompt and judge. The per-ability scores are the ceiling a memory
-system can reach with the same answer and judge models, and the gap between them and a
-system's scores is what its memory loses.
+with the official answer prompt and judge. The per-ability scores show what the same
+answer and judge models reach when retrieval is perfect.
+
+With --responses reference, no answer is generated: the dataset's own reference answer
+is judged as the response, which shows how strict the judge is (instruction and
+preference following have no reference answer and are left out).
 
   python -m tracks.beam_oracle --split 100K --out results/beam/100K
+  python -m tracks.beam_oracle --split 100K --out results/beam/100K --responses reference --name reference-answers
 """
 import argparse
 import ast
+import re
 import concurrent.futures
 import json
 import sys
@@ -50,14 +55,29 @@ def gold_context(conversation, question):
     return "\n".join(f"- [{messages[i][0]}] [{messages[i][1]}] {messages[i][2]}" for i in sources), len(sources)
 
 
-def answer(conversation, ability, index, question):
+REFERENCE_FIELDS = {"abstention": "ideal_response", "contradiction_resolution": "ideal_answer", "summarization": "ideal_summary"}
+
+
+def reference(ability, question):
+    """The dataset's reference answer as a response; an ordering split into its items."""
+    text = question.get(REFERENCE_FIELDS.get(ability, "answer")) or ""
+    if ability == "event_ordering":
+        items = [p.strip(" ,.;") for p in re.split(r"\s*\d+\)\s*", text)[1:]]
+        text = "\n".join(items) or text
+    return text
+
+
+def answer(conversation, ability, index, question, responses="oracle"):
     row = {"conversation": conversation["conversation_id"], "ability": ability, "index": index,
            "question": question["question"]}
     try:
-        context, sources = gold_context(conversation, question)
-        row.update(sources=sources, kept_tokens=len(context) // 4)
-        prompt = official.ANSWER_PROMPT.replace("<context>", context or "(no memories)").replace("<question>", question["question"])
-        response = llm.chat([{"role": "user", "content": prompt}], max_tokens=1500, tag="beam-answer-oracle" + beam.SALT)
+        if responses == "reference":
+            response = reference(ability, question)
+        else:
+            context, sources = gold_context(conversation, question)
+            row.update(sources=sources, kept_tokens=len(context) // 4)
+            prompt = official.ANSWER_PROMPT.replace("<context>", context or "(no memories)").replace("<question>", question["question"])
+            response = llm.chat([{"role": "user", "content": prompt}], max_tokens=1500, tag="beam-answer-oracle" + beam.SALT)
         row["response"] = response
         if ability == "event_ordering":
             ordering = beam.order_events(question["rubric"], response)
@@ -76,6 +96,7 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--name", default="oracle-evidence")
     parser.add_argument("--workers", type=int, default=40)
+    parser.add_argument("--responses", choices=["oracle", "reference"], default="oracle")
     args = parser.parse_args()
     directory = args.out / args.name
     directory.mkdir(parents=True, exist_ok=True)
@@ -83,8 +104,10 @@ def main():
     for conversation in beam.load(args.split):
         probing = ast.literal_eval(conversation["probing_questions"])
         for ability in beam.ABILITIES:
+            if args.responses == "reference" and ability in ("instruction_following", "preference_following"):
+                continue
             for index, question in enumerate(probing.get(ability, [])):
-                jobs.append((conversation, ability, index, question))
+                jobs.append((conversation, ability, index, question, args.responses))
     started, before = time.time(), dict(llm.STATS)
     rows = []
     with concurrent.futures.ThreadPoolExecutor(args.workers) as pool, open(directory / "rows.jsonl", "w") as out:
