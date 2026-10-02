@@ -600,7 +600,7 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
             (m.recallable() || (past && m.status == "superseded"))
                 && m.in_scope(query.project)
                 && !excluded(&m.id)
-                && (query.mode == Mode::Search || !matches!(m.kind.as_str(), "digest" | "dossier"))
+                && (query.mode == Mode::Search || !matches!(m.kind.as_str(), "digest" | "dossier" | "narrative"))
                 && m.kind != "summary"
         };
         let mut always = vec![];

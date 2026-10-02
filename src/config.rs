@@ -150,6 +150,10 @@ pub struct ExtractionConfig {
     /// After extraction, one more model call per session records values, items, dated
     /// events and stages per topic; each topic's records form a dossier (see `dossier.rs`).
     pub dossiers: bool,
+    /// Also keep each dossier stage as a searchable `narrative` memory. Off: on BEAM 100K
+    /// (400 questions) 66.5% with them vs 67.2% without; extraction gained, instruction
+    /// and preference following lost.
+    pub narratives: bool,
 }
 impl Default for ExtractionConfig {
     fn default() -> Self {
@@ -165,6 +169,7 @@ impl Default for ExtractionConfig {
             contradictions: true,
             turn_notes: false,
             dossiers: true,
+            narratives: false,
         }
     }
 }

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fs, path::Path};
 
-pub const TYPES: [&str; 11] = [
+pub const TYPES: [&str; 12] = [
     "rule",
     "fact",
     "preference",
@@ -22,6 +22,7 @@ pub const TYPES: [&str; 11] = [
     "reflection",
     "summary",
     "dossier",
+    "narrative",
 ];
 pub const TRIGGER_KINDS: [&str; 4] = ["keyword", "error", "tool", "file"];
 
@@ -189,7 +190,7 @@ impl Memory {
     /// session summaries), not a statement of its own: never deduplicated, checked for
     /// contradictions or counted as a mention.
     pub fn derived(&self) -> bool {
-        matches!(self.kind.as_str(), "digest" | "reflection" | "summary" | "dossier")
+        matches!(self.kind.as_str(), "digest" | "reflection" | "summary" | "dossier" | "narrative")
     }
     pub fn recallable(&self) -> bool {
         matches!(self.status.as_str(), "active" | "contested")

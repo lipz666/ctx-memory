@@ -62,6 +62,7 @@ pub(crate) fn render(store: &Store, hit: &Hit) -> String {
         ("episode", _, _) => "conversation excerpt: ",
         (_, "instruction", _) => "standing instruction from the user: ",
         (_, "preference", _) => "the user's preference: ",
+        (_, "narrative", _) => "account of a conversation: ",
         (_, _, "superseded") => "earlier statement, changed later: ",
         _ => "",
     };

@@ -16,7 +16,11 @@
 //! Records carry the conversation turn they come from and are stored per session (a
 //! session extracted again replaces its records). Each topic's records are rendered into
 //! one `dossier` memory (search only, like topic digests): current values with the earlier
-//! ones (the latest by turn), items per kind, events by date, stages by turn.
+//! ones (the latest by turn), items per kind, events by date, stages by turn. Each stage
+//! is also kept as a `narrative` memory of its own (search only): a few sentences that
+//! keep what happened across several turns together (what was asked, recommended and
+//! decided), found by search like any memory, where atomic facts each hold one detail
+//! (`extraction.narratives`, off by default).
 use crate::{
     extract::digest_numbered,
     llm,
@@ -180,6 +184,9 @@ pub fn refresh(store: &Store, scope: &str, topics: &[String]) -> Result<Vec<Stri
         if records.is_empty() {
             continue;
         }
+        if store.config.extraction.narratives {
+            written.extend(sync_narratives(store, &all, scope, topic, &records)?);
+        }
         let body = render(topic, &records);
         let existing = all.iter().find(|m| m.kind == "dossier" && m.scope == scope && m.topics.first() == Some(topic));
         let mut dossier = match existing {
@@ -199,6 +206,47 @@ pub fn refresh(store: &Store, scope: &str, topics: &[String]) -> Result<Vec<Stri
         written.push(dossier.id);
     }
     Ok(written)
+}
+
+/// A stage as a narrative memory's text.
+fn narrative(topic: &str, record: &Record) -> String {
+    let turns = match (record.turn, record.last_turn) {
+        (0, _) => String::new(),
+        (first, last) if last > first => format!(", turns #{first}–#{last}"),
+        (first, _) => format!(", turn #{first}"),
+    };
+    format!("{} (on \"{topic}\"{turns})", record.text)
+}
+
+/// Keep one narrative memory per stage of `topic`: new stages are added, stages no longer
+/// recorded (their session was extracted again) are archived. Returns the ids changed.
+fn sync_narratives(store: &Store, all: &[Memory], scope: &str, topic: &str, records: &[Record]) -> Result<Vec<String>> {
+    let wanted: Vec<(String, Option<String>)> =
+        records.iter().filter(|r| r.kind == "stage").map(|r| (narrative(topic, r), r.said.clone())).collect();
+    let existing: Vec<&Memory> = all
+        .iter()
+        .filter(|m| m.kind == "narrative" && m.scope == scope && m.recallable() && m.topics.first().map(String::as_str) == Some(topic))
+        .collect();
+    let mut changed = vec![];
+    for (body, said) in &wanted {
+        if existing.iter().any(|m| &m.body == body) {
+            continue;
+        }
+        let mut memory = memory::create(
+            NewMemory { content: body.clone(), kind: "narrative".into(), scope: scope.into(), title: Some(format!("Narrative: {topic}")), triggers: vec![] },
+            "agent",
+        )?;
+        memory.source = "observed".into();
+        memory.topics = vec![topic.to_owned()];
+        memory.observed_at = said.clone();
+        store.save_memory(&memory, &format!("narrative {topic} ({scope})"))?;
+        changed.push(memory.id);
+    }
+    for memory in existing.into_iter().filter(|m| !wanted.iter().any(|(body, _)| body == &m.body)) {
+        store.archive(&memory.id)?;
+        changed.push(memory.id.clone());
+    }
+    Ok(changed)
 }
 
 /// Render every dossier again from the stored records (after a change of format).
@@ -415,6 +463,7 @@ mod tests {
         crate::store::init(dir.path()).unwrap();
         let mut config = crate::store::load_config(dir.path()).unwrap();
         config.embedding.enabled = false;
+        config.extraction.narratives = true;
         crate::store::Store::save_config(dir.path(), &config).unwrap();
         let store = Store::open(dir.path()).unwrap();
         let topic = "marathon training".to_string();
@@ -422,6 +471,17 @@ mod tests {
         store.set_dossier_records("q", "q:s2", &[(topic.clone(), record("value", "weekly distance", "40 km", 5))]).unwrap();
         let ids = refresh(&store, "q", std::slice::from_ref(&topic)).unwrap();
         let dossier = store.memory(&ids[0]).unwrap();
+        // Stages become narrative memories of their own.
+        store
+            .set_dossier_records("q", "q:s3", &[(topic.clone(), Record { last_turn: 7, ..record("stage", "", "Asked for a plan; the reply suggested 3 runs a week.", 6) })])
+            .unwrap();
+        refresh(&store, "q", std::slice::from_ref(&topic)).unwrap();
+        let narratives: Vec<Memory> = store.memories().into_iter().filter(|m| m.kind == "narrative" && m.recallable()).collect();
+        assert_eq!(narratives.len(), 1);
+        assert_eq!(narratives[0].body, "Asked for a plan; the reply suggested 3 runs a week. (on \"marathon training\", turns #6–#7)");
+        store.set_dossier_records("q", "q:s3", &[]).unwrap();
+        refresh(&store, "q", std::slice::from_ref(&topic)).unwrap();
+        assert!(store.memories().into_iter().all(|m| m.kind != "narrative" || !m.recallable()), "a dropped stage is archived");
         assert_eq!((dossier.kind.as_str(), dossier.topics.as_slice()), ("dossier", std::slice::from_ref(&topic)));
         assert!(dossier.body.contains("weekly distance: 40 km (#5") && dossier.body.contains("earlier: 30 km (#1"));
         // A session extracted again replaces its records.
