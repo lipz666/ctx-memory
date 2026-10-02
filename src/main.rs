@@ -1,33 +1,10 @@
-mod adapters;
-mod agent;
-mod api;
-mod brief;
-mod config;
-mod consolidation;
-mod contradict;
-mod dossier;
-mod embed;
-mod episode;
-mod experimental;
-mod extract;
-mod feedback;
-mod index;
-mod inject;
-mod llm;
-mod mcp;
-mod planner;
-mod memory;
-mod observer;
-mod proxy;
-mod recall;
-mod reflect;
-mod server;
-mod session;
-mod store;
-
 use anyhow::{Result, bail};
 use clap::{Parser, Subcommand};
 use config::{Agent, ModelConfig};
+use ctx::{
+    VERSION, adapters, config, consolidation, dossier, experimental, extract, llm, mcp, memory,
+    recall, server, session, status_json, store,
+};
 use memory::{NewMemory, NewTrigger};
 use serde_json::{Value, json};
 use std::{
@@ -36,9 +13,6 @@ use std::{
     path::PathBuf,
 };
 use store::{Store, root_path};
-
-/// Package version and the git commit the binary was built from.
-pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (", env!("CTX_GIT_HASH"), ")");
 
 #[derive(Parser)]
 #[command(
@@ -225,21 +199,6 @@ fn valid_base_url(url: &str) -> Result<()> {
 fn print_json(value: &Value) -> Result<()> {
     println!("{}", serde_json::to_string_pretty(value)?);
     Ok(())
-}
-
-pub fn status_json(store: &Store) -> Result<Value> {
-    let config = &store.config;
-    Ok(json!({
-        "version": VERSION,
-        "root": store.root.display().to_string(),
-        "port": config.port,
-        "agents": config.agents.keys().collect::<Vec<_>>(),
-        "model": config.model.as_ref().map(|m| &m.model),
-        "embedding": {"enabled": config.embedding.enabled, "model": config.embedding.model, "loaded": store.embedder.get().is_some()},
-        "extraction": {"enabled": config.extraction.enabled && config.model.is_some(), "idle_minutes": config.extraction.idle_minutes, "daily_llm_calls": config.extraction.daily_llm_calls, "llm_calls_today": store.llm_calls_today()?},
-        "experimental": {"gate": config.experimental.gate_enabled, "action_guard": config.experimental.action_guard, "eviction": config.experimental.eviction_enabled, "maintenance": config.experimental.maintenance_enabled},
-        "stats": store.stats()?,
-    }))
 }
 
 fn project_from_cwd() -> Option<String> {

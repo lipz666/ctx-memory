@@ -334,6 +334,9 @@ impl Index {
     pub fn len(&self) -> usize {
         self.docs.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.docs.is_empty()
+    }
 }
 
 #[cfg(test)]

@@ -1,0 +1,19 @@
+[package]
+name = "ccx"
+version = "0.1.0"
+edition = "2024"
+description = "Lightweight context manager for long-running agents (ctx branch)"
+
+[dependencies]
+ctx = { path = "../.." }
+anyhow = "1"
+async-stream = "0.3"
+axum = "0.8"
+chrono = "0.4"
+clap = { version = "4", features = ["derive"] }
+futures-util = "0.3"
+hex = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["full"] }

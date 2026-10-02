@@ -1,0 +1,77 @@
+{
+ "model": "gemini-3.8-flash-high",
+ "config": "final_8k, seed 0 per task",
+ "via": "ccx serve (shadow)",
+ "tasks": [
+  {
+   "run": "pilot-8k",
+   "task": "ABTestingS2LEnv",
+   "status": "success",
+   "accuracy": 1.0,
+   "steps": 40
+  },
+  {
+   "run": "pilot-8k",
+   "task": "AcademicWarningS2LEnv",
+   "status": "success",
+   "accuracy": 1.0,
+   "steps": 43
+  },
+  {
+   "run": "pilot-8k",
+   "task": "ApplyPhDEmailS2LEnv",
+   "status": "success",
+   "accuracy": 0.0,
+   "steps": 16
+  },
+  {
+   "run": "pilot-8k",
+   "task": "CanvasArrangeExamS2LEnv",
+   "status": "success",
+   "accuracy": 1.0,
+   "steps": 22
+  },
+  {
+   "run": "pilot-8k",
+   "task": "CanvasListTestS2LEnv",
+   "status": "success",
+   "accuracy": 1.0,
+   "steps": 36
+  },
+  {
+   "run": "pilot-8k",
+   "task": "CourseAssistantS2LEnv",
+   "status": "success",
+   "accuracy": 0.0,
+   "steps": 11
+  },
+  {
+   "run": "pilot-8k-rest",
+   "task": "ExcelMarketResearchS2LEnv",
+   "status": "success",
+   "accuracy": 1.0,
+   "steps": 49
+  },
+  {
+   "run": "pilot-8k-rest",
+   "task": "FilterLowSellingProductsS2LEnv",
+   "status": "success",
+   "accuracy": 1.0,
+   "steps": 44
+  },
+  {
+   "run": "pilot-8k-rest",
+   "task": "MachineOperatingS2LEnv",
+   "status": "success",
+   "accuracy": 1.0,
+   "steps": 40
+  },
+  {
+   "run": "pilot-8k-rest",
+   "task": "SetConfCrDdlS2LEnv",
+   "status": "success",
+   "accuracy": 1.0,
+   "steps": 38
+  }
+ ]
+}

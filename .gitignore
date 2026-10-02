@@ -25,3 +25,8 @@ bench/results/**/questions.json
 
 # BEAM dataset files (download with the plan in docs/beam-experiment-plan.md)
 bench/data/beam/*.parquet
+
+# External benchmark checkouts (LOCA-bench: git clone, see docs/ccx-m0.md)
+bench/external/
+bench/results/loca/pilot-*/
+bench/results/loca/*.log
