@@ -127,10 +127,13 @@ static NAMED_DATE: LazyLock<Regex> = LazyLock::new(|| {
 });
 static NUMERIC_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b").unwrap());
 
-/// Dates named in `text` in order of appearance: (year if given, month, day).
-pub(crate) fn dates(text: &str) -> Vec<(Option<i32>, u32, u32)> {
+/// A date as named in text: year if given, month, day.
+type Named = (Option<i32>, u32, u32);
+
+/// Dates named in `text` in order of appearance.
+pub(crate) fn dates(text: &str) -> Vec<Named> {
     const MONTHS: [&str; 12] = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-    let mut found: Vec<(usize, (Option<i32>, u32, u32))> = vec![];
+    let mut found: Vec<(usize, Named)> = vec![];
     for c in NAMED_DATE.captures_iter(text) {
         let month = MONTHS.iter().position(|m| c[1].eq_ignore_ascii_case(m)).unwrap() as u32 + 1;
         let day = c[2].parse().unwrap_or(0);

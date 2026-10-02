@@ -44,6 +44,15 @@ const KNOWN_LABELS: usize = 25;
 /// Characters per dossier section: values, items, events, stages.
 const SECTION_CHARS: [usize; 4] = [3_000, 3_000, 2_500, 6_000];
 const LINE_MIN: usize = 120;
+/// A dossier rendered for one question (in a brief): characters per section, and per
+/// section for questions about the whole history or the order of things, where the stages
+/// carry the answer. One conversation about one project makes a dossier of 250 records
+/// (about 33,000 characters); cut evenly to fit `SECTION_CHARS`, most lines lost the detail
+/// a question needed.
+const QUESTION_CHARS: [usize; 4] = [6_000, 8_000, 6_000, 14_000];
+const HISTORY_CHARS: [usize; 4] = [4_000, 6_000, 6_000, 22_000];
+/// The longest line kept whole when lines are chosen for a question.
+const QUESTION_LINE: usize = 700;
 
 const PROMPT: &str = "You maintain topic dossiers in a person's long-term memory: for each subject they talk about with the assistant (a project, a plan, a goal, a relationship, a hobby, a health matter), what it is like now and how it went. You receive one conversation (user messages are numbered \"[user #n]\"), its date (\"session_date\") and the dossiers that already exist (\"known_topics\", with their value names and item kinds).
 
@@ -336,8 +345,65 @@ fn fit(lines: Vec<String>, chars: usize) -> Vec<String> {
     out
 }
 
+/// Lines within `chars` for `question`: whole lines (up to `QUESTION_LINE`), the ones that
+/// share the most informative words with the question first, shown in their own order,
+/// with a count of the lines left out.
+fn fit_for(lines: Vec<String>, chars: usize, question: &[String]) -> Vec<String> {
+    let total: usize = lines.iter().map(|l| l.chars().count() + 1).sum();
+    if total <= chars || lines.is_empty() {
+        return lines;
+    }
+    let terms: Vec<std::collections::HashSet<String>> = lines.iter().map(|l| crate::index::tokens(l).into_iter().collect()).collect();
+    let n = lines.len() as f64;
+    let weight = |term: &String| {
+        let df = terms.iter().filter(|t| t.contains(term)).count() as f64;
+        if df == 0.0 { 0.0 } else { (n / df).ln() + 0.1 }
+    };
+    let weights: Vec<(String, f64)> = question.iter().map(|t| (t.clone(), weight(t))).collect();
+    let mut order: Vec<(usize, f64)> =
+        terms.iter().enumerate().map(|(i, t)| (i, weights.iter().filter(|(w, _)| t.contains(w)).map(|(_, x)| x).sum())).collect();
+    order.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+    let mut keep = vec![false; lines.len()];
+    let mut used = 0;
+    for (i, _) in order {
+        let len = lines[i].chars().count().min(QUESTION_LINE) + 1;
+        if used + len <= chars {
+            keep[i] = true;
+            used += len;
+        }
+    }
+    let left = keep.iter().filter(|k| !**k).count();
+    let mut out: Vec<String> = lines
+        .into_iter()
+        .zip(keep)
+        .filter(|(_, k)| *k)
+        .map(|(line, _)| {
+            if line.chars().count() > QUESTION_LINE {
+                line.chars().take(QUESTION_LINE).collect::<String>() + "…"
+            } else {
+                line
+            }
+        })
+        .collect();
+    if left > 0 {
+        out.push(format!("- ({left} more not shown: less related to the question)"));
+    }
+    out
+}
+
 /// A topic's dossier from its records.
 pub fn render(topic: &str, records: &[Record], overview: Option<&str>) -> String {
+    render_with(topic, records, overview, None)
+}
+
+/// A topic's dossier rendered for `question`: larger sections, and whole lines chosen by
+/// relevance instead of every line cut short. `history`: a question about the whole
+/// history or the order of things (the stages get most of the room).
+pub fn render_for(topic: &str, records: &[Record], overview: Option<&str>, question: &str, history: bool) -> String {
+    render_with(topic, records, overview, Some((question, history)))
+}
+
+fn render_with(topic: &str, records: &[Record], overview: Option<&str>, question: Option<(&str, bool)>) -> String {
     let order = |r: &Record| (r.turn, r.said.clone().unwrap_or_default());
     let mut sorted: Vec<&Record> = records.iter().collect();
     sorted.sort_by_key(|r| order(r));
@@ -422,17 +488,40 @@ pub fn render(topic: &str, records: &[Record], overview: Option<&str>) -> String
     if let Some(overview) = overview {
         body.push_str(&format!("\nOverview:\n{}", overview.trim()));
     }
+    let caps = match question {
+        None => SECTION_CHARS,
+        Some((_, true)) => HISTORY_CHARS,
+        Some((_, false)) => QUESTION_CHARS,
+    };
+    let terms = question.map(|(q, _)| crate::index::tokens(q)).unwrap_or_default();
     for (heading, lines, chars) in [
-        ("Current values (with earlier ones)", values, SECTION_CHARS[0]),
-        ("Items, by kind", items, SECTION_CHARS[1]),
-        ("Dated events", events, SECTION_CHARS[2]),
-        ("Stages, in order", stages, SECTION_CHARS[3]),
+        ("Current values (with earlier ones)", values, caps[0]),
+        ("Items, by kind", items, caps[1]),
+        ("Dated events", events, caps[2]),
+        ("Stages, in order", stages, caps[3]),
     ] {
         if !lines.is_empty() {
-            body.push_str(&format!("\n{heading}:\n{}", fit(lines, chars).join("\n")));
+            let lines = if question.is_some() { fit_for(lines, chars, &terms) } else { fit(lines, chars) };
+            body.push_str(&format!("\n{heading}:\n{}", lines.join("\n")));
         }
     }
     body
+}
+
+/// The dossiers in scope most relevant to `question`, best first (at most `count`), each
+/// rendered for the question from its records (see `render_for`).
+pub fn for_question(store: &Store, question: &str, project: Option<&str>, count: usize, history: bool) -> Result<Vec<Hit>> {
+    let mut hits = relevant(store, question, project, count)?;
+    for hit in &mut hits {
+        let Some(topic) = hit.memory.topics.first().cloned() else { continue };
+        let records = store.dossier_records(&hit.memory.scope, &topic)?;
+        if records.is_empty() {
+            continue;
+        }
+        let overview = store.dossier_overview(&hit.memory.scope, &topic)?.map(|(_, text)| text);
+        hit.memory.body = render_for(&topic, &records, overview.as_deref(), question, history);
+    }
+    Ok(hits)
 }
 
 /// The dossiers in scope most relevant to `text`, best first (at most `count`).
@@ -483,6 +572,20 @@ mod tests {
         let (done, planned) = (body.find("2024-05-01, done: first 20 km run").unwrap(), body.find("2024-06-12, planned: physio").unwrap());
         assert!(done < planned, "events by date");
         assert!(body.find("- #4–#6 [2024/05/02]: Asked").unwrap() < body.find("- #8 [2024/05/02]: Reported").unwrap());
+    }
+
+    #[test]
+    fn a_dossier_for_a_question_keeps_whole_related_lines_instead_of_cutting_every_line() {
+        let mut records: Vec<Record> = (1..=300)
+            .map(|i| record("stage", "", &format!("Worked through routine chores and small fixes number {i}, with a long account of what was tried and why it mattered to the plan"), i))
+            .collect();
+        records.push(record("stage", "", "Added Redis account lockout with atomic counters, reset on successful login", 301));
+        let cut = render("budget tracker", &records, None);
+        assert!(!cut.contains("reset on successful login"), "the generic rendering cuts every line short");
+        let asked = render_for("budget tracker", &records, None, "How did I set up the Redis lockout?", true);
+        assert!(asked.contains("Added Redis account lockout with atomic counters, reset on successful login"));
+        assert!(asked.contains("more not shown"));
+        assert!(asked.len() > cut.len());
     }
 
     #[test]

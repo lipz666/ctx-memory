@@ -1,0 +1,51 @@
+{
+  "run": "ctx-beam-v8b-reanswer-8k-brief",
+  "questions": 100,
+  "below": 0.75,
+  "seconds": 900,
+  "repeat_fail": 96,
+  "stages": {
+    "abstention": {
+      "brief": 1
+    },
+    "all": {
+      "brief": 97,
+      "answer": 3
+    },
+    "contradiction_resolution": {
+      "brief": 4
+    },
+    "event_ordering": {
+      "brief": 33
+    },
+    "information_extraction": {
+      "brief": 1,
+      "answer": 1
+    },
+    "instruction_following": {
+      "brief": 1,
+      "answer": 1
+    },
+    "knowledge_update": {
+      "brief": 9,
+      "answer": 1
+    },
+    "multi_session_reasoning": {
+      "brief": 13
+    },
+    "preference_following": {
+      "brief": 3
+    },
+    "summarization": {
+      "brief": 27
+    },
+    "temporal_reasoning": {
+      "brief": 5
+    }
+  },
+  "usage": {
+    "calls": 1236,
+    "input_tokens": 1342326,
+    "output_tokens": 50178
+  }
+}

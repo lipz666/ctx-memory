@@ -122,12 +122,19 @@ def main():
     parser.add_argument("--below", type=float, default=0.75)
     parser.add_argument("--budget", type=int, default=8000)
     parser.add_argument("--workers", type=int, default=10)
+    parser.add_argument("--subset", type=Path, help="only the questions of an earlier diagnosis (its rows.jsonl)")
+    parser.add_argument("--subset-stage", default="", help="with --subset: only those placed in this stage")
+    parser.add_argument("--tag", default="errors", help="name of the store copy (two diagnoses may run at once)")
     args = parser.parse_args()
     old = {}
     for path in args.rows:
         for line in open(path):
             r = json.loads(line)
             old[(r["conversation"], r["ability"], r["index"])] = r
+    subset = None
+    if args.subset:
+        subset = {(r["conversation"], r["ability"], r["index"]) for r in map(json.loads, open(args.subset))
+                  if not args.subset_stage or r.get("stage") == args.subset_stage}
     args.out.mkdir(parents=True, exist_ok=True)
     conversations = {c["conversation_id"]: c for c in beam.load(args.split)}
     started, before = time.time(), dict(llm.STATS)
@@ -136,7 +143,7 @@ def main():
         for spec in args.stores:
             span, workdir = spec.split("=", 1)
             first, last = map(int, span.split("-"))
-            system = Ctx(Path(workdir) / f"{args.run}-errors-home", name=args.run, prompt_file=BENCH / "prompts/ctx-general.txt",
+            system = Ctx(Path(workdir) / f"{args.run}-{args.tag}-home", name=args.run, prompt_file=BENCH / "prompts/ctx-general.txt",
                          episodes=max(5, args.budget // 800), budget=args.budget, reuse_from=Path(workdir) / f"{args.run}-home",
                          brief=True, recall={"time_chains": "false", "entity_hops": "false"})
             system.setup()
@@ -149,7 +156,7 @@ def main():
                     for ability in beam.ABILITIES:
                         for index, question in enumerate(probing.get(ability, [])):
                             r = old.get((cid, ability, index))
-                            if r and r["score"] < args.below:
+                            if r and r["score"] < args.below and (subset is None or (cid, ability, index) in subset):
                                 jobs.append((conversation, ability, index, question, last_day.replace("/", "-") if last_day else None, r))
                 with concurrent.futures.ThreadPoolExecutor(args.workers) as pool:
                     for row in pool.map(lambda j: diagnose(system, j[0], j[1], j[2], j[3], args.budget, j[4], j[5]), jobs):

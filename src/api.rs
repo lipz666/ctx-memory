@@ -273,7 +273,7 @@ pub async fn recall(
                 turns,
                 ..Default::default()
             };
-        let hits = match &plan {
+        let mut hits = match &plan {
             Some(plan) => recall::recall_planned(&store, &query, plan)?,
             None => recall::recall(&store, &query)?,
         };
@@ -284,9 +284,12 @@ pub async fn recall(
             let texts: Vec<&str> =
                 std::iter::once(params.q.as_str()).chain(plan.iter().flat_map(|p| p.queries.iter().map(String::as_str))).collect();
             log.extend(recall::turn_log_for(&store, &texts, params.project.as_deref(), recall::TURN_LOG_CHARS)?);
-            for dossier in crate::dossier::relevant(&store, &params.q, params.project.as_deref(), crate::dossier::BRIEF_DOSSIERS)? {
-                if !hits.iter().any(|h| h.memory.id == dossier.memory.id) {
-                    log.push(dossier);
+            let wanted = recall::intent(&params.q);
+            let history = recall::summary_question(&wanted) || wanted.mention_order;
+            for dossier in crate::dossier::for_question(&store, &params.q, params.project.as_deref(), crate::dossier::BRIEF_DOSSIERS, history)? {
+                match hits.iter_mut().find(|h| h.memory.id == dossier.memory.id) {
+                    Some(hit) => hit.memory.body = dossier.memory.body,
+                    None => log.push(dossier),
                 }
             }
         }

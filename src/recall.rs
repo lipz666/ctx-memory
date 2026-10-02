@@ -1123,6 +1123,7 @@ pub(crate) fn ranked_turns(store: &Store, text: &str, vector: Option<&[f32]>, pr
 /// what order or how often (the most relevant when they do not all fit), otherwise the
 /// RELEVANT_TURNS most relevant. The user's own words decide what they said, did or
 /// planned, and the turn numbers which of two things came later on the same day.
+#[cfg(test)]
 pub fn turn_log(store: &Store, text: &str, project: Option<&str>, chars: usize) -> Result<Option<Hit>> {
     turn_log_for(store, &[text], project, chars)
 }
