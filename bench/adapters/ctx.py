@@ -113,7 +113,7 @@ def render(hit):
     label = {"preference": "(the user's preference) ",
              "instruction": "(the user's standing instruction for the assistant; apply it to this answer) ",
              "reflection": "(summary of what the user has shared about this topic) "}.get(hit.get("type"), "")
-    if hit.get("type") in ("timeline", "conflict", "brief", "turnlog"):
+    if hit.get("type") in ("timeline", "conflict", "brief", "turnlog", "dossier"):
         return hit["content"]
     if hit.get("status") == "superseded":
         label = "(earlier statement, changed later) " + label

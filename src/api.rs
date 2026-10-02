@@ -255,7 +255,7 @@ pub async fn recall(
     let params_dry_run = params.dry_run == Some(true);
     let use_agent = brief && params.agent == Some(true);
     let project = params.project.clone();
-    let (hits, log) = tokio::task::spawn_blocking(move || -> anyhow::Result<(Vec<recall::Hit>, Option<recall::Hit>)> {
+    let (hits, log) = tokio::task::spawn_blocking(move || -> anyhow::Result<(Vec<recall::Hit>, Vec<recall::Hit>)> {
         let query = Query {
                 text: Some(&params.q),
                 project: params.project.as_deref(),
@@ -277,12 +277,17 @@ pub async fn recall(
             Some(plan) => recall::recall_planned(&store, &query, plan)?,
             None => recall::recall(&store, &query)?,
         };
-        // A brief reads the user's own messages besides the gathered hits.
-        let log = if brief {
-            recall::turn_log(&store, &params.q, params.project.as_deref(), recall::TURN_LOG_CHARS)?
-        } else {
-            None
-        };
+        // A brief reads the user's own messages and the most relevant topic dossiers
+        // besides the gathered hits.
+        let mut log: Vec<recall::Hit> = vec![];
+        if brief {
+            log.extend(recall::turn_log(&store, &params.q, params.project.as_deref(), recall::TURN_LOG_CHARS)?);
+            for dossier in crate::dossier::relevant(&store, &params.q, params.project.as_deref(), crate::dossier::BRIEF_DOSSIERS)? {
+                if !hits.iter().any(|h| h.memory.id == dossier.memory.id) {
+                    log.push(dossier);
+                }
+            }
+        }
         Ok((hits, log))
     })
     .await

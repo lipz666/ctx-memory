@@ -2,9 +2,9 @@
 //! to an older one on its own, so each new memory is compared with similar memories when
 //! either side makes a negative claim ("never", "haven't") or both give different numbers,
 //! and one model call per session judges the candidate pairs:
-//! - a conflict ("I've never written a Flask route" / "I tested the homepage route"): both
+//! - a conflict ("I've never been to Japan" / "I visited Kyoto last spring"): both
 //!   are kept, linked both ways and marked contested, so a reader can say the user said both;
-//! - an update ("grocery budget $500" / later "raised to $550"): the earlier one is
+//! - an update ("gym membership $40" / later "raised to $45"): the earlier one is
 //!   superseded by the later one and kept as its history.
 use crate::{
     extract::{numbers, strip_dates},
@@ -30,12 +30,12 @@ const MAX_PAIRS: usize = 20;
 /// Pairs that only differ in their numbers must be at least this similar.
 const UPDATE_SIMILARITY: f64 = 0.6;
 
-const PROMPT: &str = "You check a person's memory for contradictions. Each pair holds two statements recorded from the user's conversations, each with the date it was said. A pair CONFLICTS when both cannot be true about the same thing: one says the user never did, has not done or does not have something, and the other says they did or have it (\"I've never written Flask routes in this project\" vs \"the user tested the homepage route\"; \"never completed a coin toss problem\" vs \"completed 5 coin toss problems\").
+const PROMPT: &str = "You check a person's memory for contradictions. Each pair holds two statements recorded from the user's conversations, each with the date it was said. A pair CONFLICTS when both cannot be true about the same thing: one says the user never did, has not done or does not have something, and the other says they did or have it (\"I've never been to Japan\" vs \"the user visited Kyoto last spring\"; \"never ran a marathon\" vs \"finished 2 marathons\").
 It does NOT conflict when:
-- the negative statement was said BEFORE the other one and the later one reports doing it for the first time (progress: \"never deployed\" in March, \"deployed to Render\" in May);
+- the negative statement was said BEFORE the other one and the later one reports doing it for the first time (progress: \"never baked bread\" in March, \"baked a sourdough loaf\" in May);
 - the change is described as such (\"no longer\", \"switched to\", \"stopped\");
 - they are about different things, projects or people.
-A pair is an UPDATE when both give a value of the same thing (a budget, a count, a version, a setting, a date) and the second statement changes it to a new current value (\"grocery budget $500 per month\" then \"grocery budget raised to $550\"). Separate events with different numbers (two different purchases, two different problems solved) are neither.
+A pair is an UPDATE when both give a value of the same thing (a budget, a count, a version, a setting, a date) and the second statement changes it to a new current value (\"gym membership $40 per month\" then \"gym membership raised to $45\"). Separate events with different numbers (two different purchases, two different problems solved) are neither.
 Return JSON only: {\"conflicts\":[pair numbers],\"updates\":[pair numbers]}. Do not wrap the JSON in Markdown.";
 
 #[derive(Deserialize)]

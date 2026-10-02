@@ -155,6 +155,11 @@ pub fn transcript(store: &Store, session: &SessionRow) -> Result<Transcript> {
 
 /// Fit entries into the digest budget: user lines are kept, the middle of the rest is
 /// dropped first.
+/// The transcript with numbered user messages ("[user #n]"), for calls that refer to them.
+pub(crate) fn digest_numbered(entries: &[(String, String)]) -> String {
+    digest(entries, true)
+}
+
 fn digest(entries: &[(String, String)], numbered: bool) -> String {
     // With turn notes the user messages are numbered so that the model can refer to each.
     let mut number = 0;
@@ -391,6 +396,14 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
         _ => None,
     };
     let notes = save_turn_notes(store, session, &transcript.user_texts, &output.turns)?;
+    // A failed dossier update never fails the extraction; the next session adds to it.
+    let dossiers = if store.config.extraction.dossiers {
+        crate::dossier::update(store, session, &transcript.entries, &transcript.user_texts)
+            .await
+            .unwrap_or_else(|error| vec![format!("failed: {error:#}")])
+    } else {
+        vec![]
+    };
     // A failed check never fails the extraction.
     let contested = if store.config.extraction.contradictions {
         crate::contradict::check(store, project, &result.0)
@@ -410,7 +423,7 @@ pub async fn extract_session(store: &Store, session: &SessionRow) -> Result<Valu
     };
     store.finish_session(&session.key, "done", None)?;
     Ok(
-        json!({"session":session.key,"created":result.0,"updated":result.1,"skipped":result.2,"skip_reason":output.skip_reason,"episodes":episodes,"digests":digests,"summary":summary,"turn_notes":notes,"contested":contested,"reflections":reflections}),
+        json!({"session":session.key,"created":result.0,"updated":result.1,"skipped":result.2,"skip_reason":output.skip_reason,"episodes":episodes,"digests":digests,"summary":summary,"turn_notes":notes,"dossiers":dossiers,"contested":contested,"reflections":reflections}),
     )
 }
 

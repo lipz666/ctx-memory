@@ -304,7 +304,9 @@ CREATE TABLE IF NOT EXISTS vectors (id TEXT PRIMARY KEY, hash TEXT NOT NULL, mod
 CREATE TABLE IF NOT EXISTS evictions (hash TEXT PRIMARY KEY, event_id TEXT NOT NULL, placeholder TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS rechecks (step_event TEXT PRIMARY KEY, task_key TEXT NOT NULL, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS episodes (id TEXT PRIMARY KEY, session TEXT NOT NULL, project TEXT, observed_at TEXT, seq INTEGER NOT NULL, hash TEXT NOT NULL, nonce BLOB NOT NULL, text BLOB NOT NULL);
-CREATE TABLE IF NOT EXISTS turn_notes (id TEXT PRIMARY KEY, session TEXT NOT NULL, nonce BLOB NOT NULL, text BLOB NOT NULL);";
+CREATE TABLE IF NOT EXISTS turn_notes (id TEXT PRIMARY KEY, session TEXT NOT NULL, nonce BLOB NOT NULL, text BLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS dossier_records (scope TEXT NOT NULL, topic TEXT NOT NULL, session TEXT NOT NULL, seq INTEGER NOT NULL, data TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS dossier_records_topic ON dossier_records(scope, topic);";
 
 impl Store {
     pub fn open(root: &Path) -> Result<Self> {
@@ -1047,6 +1049,51 @@ impl Store {
         }
         *self.episodes.write().unwrap() = episodes;
         Ok(())
+    }
+    // ---- topic dossiers (see `dossier.rs`) ----
+    /// Replace the dossier records that `session` contributed in `scope`.
+    pub fn set_dossier_records(&self, scope: &str, session: &str, records: &[(String, crate::dossier::Record)]) -> Result<()> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction()?;
+        tx.execute("DELETE FROM dossier_records WHERE scope=?1 AND session=?2", params![scope, session])?;
+        for (seq, (topic, record)) in records.iter().enumerate() {
+            tx.execute(
+                "INSERT INTO dossier_records(scope,topic,session,seq,data) VALUES (?1,?2,?3,?4,?5)",
+                params![scope, topic, session, seq as i64, serde_json::to_string(record)?],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+    /// A topic's dossier records, in the order they were stored.
+    pub fn dossier_records(&self, scope: &str, topic: &str) -> Result<Vec<crate::dossier::Record>> {
+        let db = self.db.lock().unwrap();
+        let mut query = db.prepare("SELECT data FROM dossier_records WHERE scope=?1 AND topic=?2 ORDER BY rowid")?;
+        let rows = query.query_map(params![scope, topic], |r| r.get::<_, String>(0))?;
+        let mut out = vec![];
+        for row in rows {
+            if let Ok(record) = serde_json::from_str(&row?) {
+                out.push(record);
+            }
+        }
+        Ok(out)
+    }
+    /// The topics with dossier records in `scope`, most records first, with their records.
+    pub fn dossier_topics(&self, scope: &str) -> Result<Vec<(String, Vec<crate::dossier::Record>)>> {
+        let topics: Vec<String> = {
+            let db = self.db.lock().unwrap();
+            let mut query = db.prepare(
+                "SELECT topic FROM dossier_records WHERE scope=?1 GROUP BY topic ORDER BY COUNT(*) DESC, topic",
+            )?;
+            query.query_map([scope], |r| r.get::<_, String>(0))?.collect::<rusqlite::Result<_>>()?
+        };
+        topics.into_iter().map(|topic| Ok((topic.clone(), self.dossier_records(scope, &topic)?))).collect()
+    }
+    /// The scopes with dossier records.
+    pub fn dossier_scopes(&self) -> Result<Vec<String>> {
+        let db = self.db.lock().unwrap();
+        let mut query = db.prepare("SELECT DISTINCT scope FROM dossier_records ORDER BY scope")?;
+        Ok(query.query_map([], |r| r.get::<_, String>(0))?.collect::<rusqlite::Result<_>>()?)
     }
     /// Store the gist of the assistant's reply for turns of `session` (by turn id) and
     /// re-embed them. Returns how many were stored.

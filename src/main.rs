@@ -5,6 +5,7 @@ mod brief;
 mod config;
 mod consolidation;
 mod contradict;
+mod dossier;
 mod embed;
 mod episode;
 mod experimental;
@@ -534,6 +535,8 @@ async fn main() -> Result<()> {
             println!("added {excerpts} conversation excerpts");
             let digests = extract::rebuild_digests(&store)?;
             println!("rewrote {digests} topic digests");
+            let dossiers = dossier::rebuild(&store)?;
+            println!("rewrote {dossiers} topic dossiers");
         }
         Command::Sessions => print_json(&json!(Store::open(&root)?.sessions(50)?))?,
         Command::Extract { session } => {

@@ -119,8 +119,10 @@ def make_system(name, workdir, budget):
         return Ctx(workdir / f"{name}-home", name=name, prompt_file=prompt, episodes=max(5, budget // 800),
                    budget=budget, reuse_from=workdir / f"{base}-home", brief=name.endswith("-brief") or agent, agent=agent)
     if name == "ctx-beam" or name.startswith("ctx-beam-v"):
-        # ctx-beam-vN: the same configuration on a newer engine (run with CTX_BIN), kept apart.
-        return Ctx(workdir / f"{name}-home", name=name, prompt_file=prompt, episodes=5, budget=budget)
+        # ctx-beam-vN: the same configuration on a newer engine (run with CTX_BIN), kept apart;
+        # ...-nodossier: without topic dossiers (extraction.dossiers off).
+        settings = {"dossiers": "false"} if "-nodossier" in name else None
+        return Ctx(workdir / f"{name}-home", name=name, prompt_file=prompt, episodes=5, budget=budget, recall=settings)
     raise ValueError(name)
 
 

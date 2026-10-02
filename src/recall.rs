@@ -600,7 +600,7 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
             (m.recallable() || (past && m.status == "superseded"))
                 && m.in_scope(query.project)
                 && !excluded(&m.id)
-                && (query.mode == Mode::Search || m.kind != "digest")
+                && (query.mode == Mode::Search || !matches!(m.kind.as_str(), "digest" | "dossier"))
                 && m.kind != "summary"
         };
         let mut always = vec![];
@@ -747,7 +747,7 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
         // Aggregate questions ("how many...") are answered from whole-topic overviews.
         let aggregate = query.mode == Mode::Search && text.as_deref().is_some_and(|t| intent(t).aggregate);
         if aggregate {
-            for hit in hits.iter_mut().filter(|h| h.memory.kind == "digest") {
+            for hit in hits.iter_mut().filter(|h| matches!(h.memory.kind.as_str(), "digest" | "dossier")) {
                 hit.score += AGGREGATE_DIGEST_BOOST;
                 hit.reason.push_str(" aggregate");
             }

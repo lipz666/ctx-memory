@@ -147,6 +147,9 @@ pub struct ExtractionConfig {
     /// it cost about 5% of the extracted facts (contradictions and updates suffered more
     /// than summaries gained); outlines taken from the replies without a model are used.
     pub turn_notes: bool,
+    /// After extraction, one more model call per session records values, items, dated
+    /// events and stages per topic; each topic's records form a dossier (see `dossier.rs`).
+    pub dossiers: bool,
 }
 impl Default for ExtractionConfig {
     fn default() -> Self {
@@ -161,6 +164,7 @@ impl Default for ExtractionConfig {
             known_entities: false,
             contradictions: true,
             turn_notes: false,
+            dossiers: true,
         }
     }
 }
