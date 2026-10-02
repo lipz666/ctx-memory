@@ -1,0 +1,211 @@
+{
+  "run": "ctx-beam-v8b-reanswer-8k-brief",
+  "below": 0.75,
+  "questions": 175,
+  "repeat_fail": 160,
+  "stages": {
+    "abstention": {
+      "material": {
+        "questions": 1,
+        "points": 2.5
+      },
+      "brief": {
+        "questions": 1,
+        "points": 1.2
+      },
+      "answer": {
+        "questions": 1,
+        "points": 2.5
+      },
+      "judge": {
+        "questions": 3,
+        "points": 6.2
+      }
+    },
+    "contradiction_resolution": {
+      "material": {
+        "questions": 0,
+        "points": 0.0
+      },
+      "brief": {
+        "questions": 4,
+        "points": 7.8
+      },
+      "answer": {
+        "questions": 0,
+        "points": 0.0
+      },
+      "judge": {
+        "questions": 0,
+        "points": 0.0
+      }
+    },
+    "event_ordering": {
+      "material": {
+        "questions": 1,
+        "points": 2.1
+      },
+      "brief": {
+        "questions": 33,
+        "points": 62.4
+      },
+      "answer": {
+        "questions": 1,
+        "points": 1.2
+      },
+      "judge": {
+        "questions": 2,
+        "points": 3.1
+      }
+    },
+    "information_extraction": {
+      "material": {
+        "questions": 5,
+        "points": 12.5
+      },
+      "brief": {
+        "questions": 2,
+        "points": 3.4
+      },
+      "answer": {
+        "questions": 4,
+        "points": 6.0
+      },
+      "judge": {
+        "questions": 2,
+        "points": 2.7
+      }
+    },
+    "instruction_following": {
+      "material": {
+        "questions": 1,
+        "points": 2.5
+      },
+      "brief": {
+        "questions": 2,
+        "points": 2.5
+      },
+      "answer": {
+        "questions": 3,
+        "points": 6.2
+      },
+      "judge": {
+        "questions": 0,
+        "points": 0.0
+      }
+    },
+    "knowledge_update": {
+      "material": {
+        "questions": 4,
+        "points": 10.0
+      },
+      "brief": {
+        "questions": 10,
+        "points": 23.8
+      },
+      "answer": {
+        "questions": 0,
+        "points": 0.0
+      },
+      "judge": {
+        "questions": 0,
+        "points": 0.0
+      }
+    },
+    "multi_session_reasoning": {
+      "material": {
+        "questions": 7,
+        "points": 14.2
+      },
+      "brief": {
+        "questions": 13,
+        "points": 28.1
+      },
+      "answer": {
+        "questions": 3,
+        "points": 5.0
+      },
+      "judge": {
+        "questions": 3,
+        "points": 3.8
+      }
+    },
+    "preference_following": {
+      "material": {
+        "questions": 1,
+        "points": 0.8
+      },
+      "brief": {
+        "questions": 3,
+        "points": 3.8
+      },
+      "answer": {
+        "questions": 4,
+        "points": 8.8
+      },
+      "judge": {
+        "questions": 3,
+        "points": 4.4
+      }
+    },
+    "summarization": {
+      "material": {
+        "questions": 7,
+        "points": 10.9
+      },
+      "brief": {
+        "questions": 27,
+        "points": 38.9
+      },
+      "answer": {
+        "questions": 2,
+        "points": 2.5
+      },
+      "judge": {
+        "questions": 0,
+        "points": 0.0
+      }
+    },
+    "temporal_reasoning": {
+      "material": {
+        "questions": 2,
+        "points": 3.8
+      },
+      "brief": {
+        "questions": 5,
+        "points": 10.0
+      },
+      "answer": {
+        "questions": 9,
+        "points": 11.9
+      },
+      "judge": {
+        "questions": 6,
+        "points": 10.0
+      }
+    },
+    "all": {
+      "material": {
+        "questions": 29,
+        "points": 5.9
+      },
+      "brief": {
+        "questions": 100,
+        "points": 18.2
+      },
+      "answer": {
+        "questions": 27,
+        "points": 4.4
+      },
+      "judge": {
+        "questions": 19,
+        "points": 3.0
+      }
+    }
+  },
+  "usage": {
+    "calls": 1800,
+    "input_tokens": 6293041,
+    "output_tokens": 74644
+  }
+}
