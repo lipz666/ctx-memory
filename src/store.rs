@@ -148,6 +148,7 @@ pub struct Store {
     cache: RwLock<Cache>,
     episodes: RwLock<Episodes>,
     pub embedder: embed::Slot,
+    pub reranker: embed::RerankSlot,
     ui_tickets: Mutex<HashMap<String, Instant>>,
     ui_sessions: Mutex<HashMap<String, Instant>>,
     cipher: Aes256Gcm,
@@ -306,7 +307,8 @@ CREATE TABLE IF NOT EXISTS rechecks (step_event TEXT PRIMARY KEY, task_key TEXT 
 CREATE TABLE IF NOT EXISTS episodes (id TEXT PRIMARY KEY, session TEXT NOT NULL, project TEXT, observed_at TEXT, seq INTEGER NOT NULL, hash TEXT NOT NULL, nonce BLOB NOT NULL, text BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS turn_notes (id TEXT PRIMARY KEY, session TEXT NOT NULL, nonce BLOB NOT NULL, text BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS dossier_records (scope TEXT NOT NULL, topic TEXT NOT NULL, session TEXT NOT NULL, seq INTEGER NOT NULL, data TEXT NOT NULL);
-CREATE INDEX IF NOT EXISTS dossier_records_topic ON dossier_records(scope, topic);";
+CREATE INDEX IF NOT EXISTS dossier_records_topic ON dossier_records(scope, topic);
+CREATE TABLE IF NOT EXISTS dossier_overviews (scope TEXT NOT NULL, topic TEXT NOT NULL, records INTEGER NOT NULL, text TEXT NOT NULL, PRIMARY KEY(scope, topic));";
 
 impl Store {
     pub fn open(root: &Path) -> Result<Self> {
@@ -347,6 +349,7 @@ impl Store {
             cache: RwLock::new(Cache::default()),
             episodes: RwLock::new(Episodes::default()),
             embedder: embed::Slot::default(),
+            reranker: embed::RerankSlot::default(),
             ui_tickets: Mutex::new(HashMap::new()),
             ui_sessions: Mutex::new(HashMap::new()),
             cipher,
@@ -1088,6 +1091,22 @@ impl Store {
             query.query_map([scope], |r| r.get::<_, String>(0))?.collect::<rusqlite::Result<_>>()?
         };
         topics.into_iter().map(|topic| Ok((topic.clone(), self.dossier_records(scope, &topic)?))).collect()
+    }
+    /// A topic's written overview and how many records it was written from.
+    pub fn dossier_overview(&self, scope: &str, topic: &str) -> Result<Option<(usize, String)>> {
+        let db = self.db.lock().unwrap();
+        Ok(db
+            .query_row("SELECT records, text FROM dossier_overviews WHERE scope=?1 AND topic=?2", params![scope, topic], |r| {
+                Ok((r.get::<_, i64>(0)? as usize, r.get::<_, String>(1)?))
+            })
+            .optional()?)
+    }
+    pub fn set_dossier_overview(&self, scope: &str, topic: &str, records: usize, text: &str) -> Result<()> {
+        self.db.lock().unwrap().execute(
+            "INSERT OR REPLACE INTO dossier_overviews(scope,topic,records,text) VALUES (?1,?2,?3,?4)",
+            params![scope, topic, records as i64, text],
+        )?;
+        Ok(())
     }
     /// The scopes with dossier records.
     pub fn dossier_scopes(&self) -> Result<Vec<String>> {

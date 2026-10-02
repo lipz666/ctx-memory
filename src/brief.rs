@@ -51,7 +51,7 @@ Plain text, no preamble, at most WORDS words.";
 /// One retrieved item as the brief writer sees it.
 pub(crate) fn render(store: &Store, hit: &Hit) -> String {
     let memory = &hit.memory;
-    if matches!(hit.channel, "timeline" | "conflict" | "turnlog") || hit.memory.kind == "dossier" {
+    if matches!(hit.channel, "timeline" | "conflict" | "turnlog" | "timechain") || hit.memory.kind == "dossier" {
         return memory.body.clone();
     }
     let date = memory

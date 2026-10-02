@@ -133,6 +133,8 @@ enum Command {
     /// Embed memories that lack a current vector (downloads the model on first use) and
     /// build conversation excerpts for recorded sessions that have none.
     Reindex,
+    /// Write the topic dossiers' overviews that are missing or out of date (model calls).
+    Dossiers,
     Sessions,
     /// Extract memories from due sessions, or from one session now.
     Extract {
@@ -537,6 +539,13 @@ async fn main() -> Result<()> {
             println!("rewrote {digests} topic digests");
             let dossiers = dossier::rebuild(&store)?;
             println!("rewrote {dossiers} topic dossiers");
+        }
+        Command::Dossiers => {
+            let store = Store::open(&root)?;
+            store.ensure_vectors()?;
+            let count = dossier::write_all_overviews(&store).await?;
+            store.ensure_vectors()?;
+            println!("wrote {count} dossier overviews");
         }
         Command::Sessions => print_json(&json!(Store::open(&root)?.sessions(50)?))?,
         Command::Extract { session } => {

@@ -116,8 +116,14 @@ def make_system(name, workdir, budget):
         # ...-reanswer-brief: ctx writes a brief for each question (one model call);
         # ...-reanswer-agent: the brief writer may call tools over the memory first.
         agent = name.endswith("-agent")
+        # ...-rerank-...: candidates reordered by the local cross-encoder.
+        settings = {"rerank": "jina-reranker-v1-turbo-en"} if "-rerank" in name else {}
+        # ...-time-: time salience and chains; ...-hops-: one step along entity links.
+        settings.update({"time_chains": str("-time" in name).lower(), "entity_hops": str("-hops" in name).lower()})
+        # ...-deep-...: the question is planned into sub-queries searched separately.
         return Ctx(workdir / f"{name}-home", name=name, prompt_file=prompt, episodes=max(5, budget // 800),
-                   budget=budget, reuse_from=workdir / f"{base}-home", brief=name.endswith("-brief") or agent, agent=agent)
+                   budget=budget, reuse_from=workdir / f"{base}-home", brief=name.endswith("-brief") or agent, agent=agent,
+                   recall=settings, overviews="-dov" in name, deep="-deep" in name)
     if name == "ctx-beam" or name.startswith("ctx-beam-v"):
         # ctx-beam-vN: the same configuration on a newer engine (run with CTX_BIN), kept apart;
         # ...-nodossier: without topic dossiers (extraction.dossiers off).
@@ -146,7 +152,10 @@ def run_conversation(system, conversation, budget, session_chars, rows_path, loc
             try:
                 t = time.time()
                 # Candidates scale with the budget so a larger budget can actually be filled.
-                retrieved = system.search(ns, question["question"], limit=max(20, budget // 100))
+                # "Today" for relative dates in a planned search: the conversation's last day.
+                last = anchor_date(conversation["chat"][-1][0].get("time_anchor")) if conversation["chat"] and conversation["chat"][-1] else None
+                now = last.replace("/", "-") if last else None
+                retrieved = system.search(ns, question["question"], limit=max(20, budget // 100), now=now)
                 row["search_ms"] = round((time.time() - t) * 1000, 1)
                 kept = retrieved if system.unbounded else fit_budget(retrieved, budget)
                 context = "\n".join(f"- {item}" for item in kept) or "(no memories)"

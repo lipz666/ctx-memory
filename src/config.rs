@@ -79,6 +79,19 @@ pub struct RecallConfig {
     pub search_min_similarity: f32,
     /// Raw conversation excerpts returned by explicit searches besides memories (0: none).
     pub search_episodes: usize,
+    /// Search mode: reorder the best candidates with this local cross-encoder
+    /// ("jina-reranker-v1-turbo-en", English, 151 MB; "bge-reranker-base", Chinese and
+    /// English, 1.1 GB). Downloaded on first use. None: off.
+    pub rerank: Option<String>,
+    /// Search mode: raise later (or earlier) memories for questions about the current (or
+    /// first) state, and chain statements of one thing at different times. Off: with query
+    /// decomposition, no change on BEAM 100K temporal, update and ordering questions
+    /// beyond rerun noise (60 questions in each half).
+    pub time_chains: bool,
+    /// Search mode: also return memories that name an entity of the best matches (one step
+    /// along entity links). Off: on BEAM 100K multi-session, summary and extraction
+    /// questions (60) the linked memories crowded out relevant ones (-4.9 points).
+    pub entity_hops: bool,
 }
 impl Default for RecallConfig {
     fn default() -> Self {
@@ -92,6 +105,9 @@ impl Default for RecallConfig {
             relative_cutoff: 0.8,
             search_min_similarity: 0.25,
             search_episodes: 5,
+            rerank: None,
+            time_chains: false,
+            entity_hops: false,
         }
     }
 }
@@ -154,6 +170,10 @@ pub struct ExtractionConfig {
     /// (400 questions) 66.5% with them vs 67.2% without; extraction gained, instruction
     /// and preference following lost.
     pub narratives: bool,
+    /// Have the model write an overview at the top of each dossier (current state, the
+    /// course stage by stage, the main items), rewritten when the topic's records have grown
+    /// by half or by 15. One call per topic then.
+    pub dossier_overviews: bool,
 }
 impl Default for ExtractionConfig {
     fn default() -> Self {
@@ -170,6 +190,7 @@ impl Default for ExtractionConfig {
             turn_notes: false,
             dossiers: true,
             narratives: false,
+            dossier_overviews: false,
         }
     }
 }

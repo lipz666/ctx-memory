@@ -113,7 +113,7 @@ def render(hit):
     label = {"preference": "(the user's preference) ",
              "instruction": "(the user's standing instruction for the assistant; apply it to this answer) ",
              "reflection": "(summary of what the user has shared about this topic) "}.get(hit.get("type"), "")
-    if hit.get("type") in ("timeline", "conflict", "brief", "turnlog", "dossier"):
+    if hit.get("type") in ("timeline", "conflict", "brief", "turnlog", "dossier", "timechain"):
         return hit["content"]
     if hit.get("status") == "superseded":
         label = "(earlier statement, changed later) " + label
@@ -144,7 +144,7 @@ def namespace(ns):
 class Ctx(MemorySystem):
     """ctx with its built-in extraction prompt (tuned for coding work), or a variant prompt."""
 
-    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None, brief=False, turns=False, agent=False):
+    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None, brief=False, turns=False, agent=False, overviews=False):
         self.name = name
         self.failed_sessions = []
         self.mode = mode
@@ -159,6 +159,8 @@ class Ctx(MemorySystem):
         self.turns = turns
         # The brief writer may call tools over the memory before writing.
         self.agent = agent
+        # Write the dossiers' overviews in the reused store before answering.
+        self.overviews = overviews
         # Reuse another variant's memory store (same memories, no new extraction) and only
         # build the conversation excerpts; ingestion then does nothing.
         self.reuse_from = reuse_from
@@ -179,7 +181,22 @@ class Ctx(MemorySystem):
             if self.service.home.exists():
                 shutil.rmtree(self.service.home)
             shutil.copytree(self.reuse_from, self.service.home)
+            # A port of its own (the copy has the original's; two copies may run at once)
+            # and the recall settings of this variant.
+            path = self.service.home / "config.yaml"
+            config = re.sub(r"^port: \d+", f"port: {free_port()}", path.read_text(), flags=re.M)
+            path.write_text(config)
+            if self.service.recall:
+                config = path.read_text()
+                for key, value in self.service.recall.items():
+                    if re.search(rf"^  {key}: ", config, re.M):
+                        config = re.sub(rf"^  {key}: .*$", f"  {key}: {value}", config, flags=re.M)
+                    else:
+                        config = config.replace("\nrecall:\n", f"\nrecall:\n  {key}: {value}\n", 1)
+                path.write_text(config)
             subprocess.run([BIN, "reindex"], env=self.service._env(), check=True, capture_output=True)
+            if self.overviews:
+                subprocess.run([BIN, "dossiers"], env=self.service._env(), check=True, capture_output=True)
         self.service.start()
 
     def teardown(self):

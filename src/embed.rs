@@ -1,7 +1,7 @@
 //! Local sentence embeddings (fastembed / ONNX Runtime, CPU). No network at query time;
 //! the model is downloaded once into a cache shared by all ctx instances.
 use anyhow::{Context, Result, bail};
-use fastembed::{EmbeddingModel, TextEmbedding, TextInitOptions};
+use fastembed::{EmbeddingModel, RerankInitOptions, RerankerModel, TextEmbedding, TextInitOptions, TextRerank};
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex, OnceLock},
@@ -108,6 +108,73 @@ impl Embedder {
             }
         }
         Ok(vectors)
+    }
+}
+
+/// A cross-encoder that scores a query against each candidate together (more precise than
+/// comparing separate vectors), used to reorder search candidates.
+pub struct Reranker {
+    model: Mutex<TextRerank>,
+    pub name: String,
+}
+
+fn reranker_for(name: &str) -> Option<RerankerModel> {
+    Some(match name {
+        "jina-reranker-v1-turbo-en" => RerankerModel::JINARerankerV1TurboEn,
+        "bge-reranker-base" => RerankerModel::BGERerankerBase,
+        _ => return None,
+    })
+}
+
+impl Reranker {
+    /// Loads (and on first use downloads) the model. Takes seconds; call off the hot path.
+    pub fn load(name: &str) -> Result<Self> {
+        let Some(model) = reranker_for(name) else {
+            bail!("unknown reranker {name}");
+        };
+        let dir = model_dir();
+        std::fs::create_dir_all(&dir)?;
+        let model = TextRerank::try_new(RerankInitOptions::new(model).with_cache_dir(dir).with_show_download_progress(false))
+            .with_context(|| format!("loading reranker {name}"))?;
+        Ok(Self { model: Mutex::new(model), name: name.into() })
+    }
+    /// Relevance of each document to the query, in the documents' order (higher is more
+    /// relevant; a logit).
+    pub fn scores(&self, query: &str, documents: &[String]) -> Result<Vec<f32>> {
+        if documents.is_empty() {
+            return Ok(vec![]);
+        }
+        let query: String = query.chars().take(1000).collect();
+        let documents: Vec<String> = documents.iter().map(|d| d.chars().take(2000).collect()).collect();
+        let results = self.model.lock().unwrap().rerank(query, documents.clone(), false, Some(16))?;
+        let mut scores = vec![f32::MIN; documents.len()];
+        for result in results {
+            if let Some(score) = scores.get_mut(result.index) {
+                *score = result.score;
+            }
+        }
+        Ok(scores)
+    }
+}
+
+/// A lazily loaded reranker, like `Slot`.
+#[derive(Default)]
+pub struct RerankSlot {
+    cell: OnceLock<Option<Arc<Reranker>>>,
+    loading: Mutex<()>,
+}
+impl RerankSlot {
+    pub fn load(&self, name: &str) -> Option<Arc<Reranker>> {
+        let _guard = self.loading.lock().unwrap();
+        self.cell
+            .get_or_init(|| match Reranker::load(name) {
+                Ok(model) => Some(Arc::new(model)),
+                Err(error) => {
+                    eprintln!("ctx: reranker unavailable, search order kept: {error:#}");
+                    None
+                }
+            })
+            .clone()
     }
 }
 

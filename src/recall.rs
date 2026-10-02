@@ -84,6 +84,10 @@ pub struct Intent {
     /// "Have I ever...", "Did I...": a yes/no question about the user's own history, the
     /// only kind that raises an unresolved contradiction.
     pub yes_no: bool,
+    /// "currently", "latest", "now": the most recent statements matter most.
+    pub recent: bool,
+    /// "at first", "initially", "originally": the earliest statements matter most.
+    pub earliest: bool,
 }
 
 const AGGREGATE_CUES: &[&str] = &[
@@ -105,6 +109,14 @@ const OVERVIEW_CUES: &[&str] = &[
 const YES_NO_STARTS: &[&str] = &[
     "have i ", "has my ", "had i ", "did i ", "do i ", "does my ", "am i ", "was i ", "were i ", "is my ",
     "are my ", "is it true", "have we ", "did we ", "do we ", "我有没有", "我是否", "我有没有", "我曾经", "我做过",
+];
+const RECENT_CUES: &[&str] = &[
+    "currently", "current", "now", "latest", "most recent", "most recently", "these days", "at the moment",
+    "still", "anymore", "目前", "现在", "最新", "最近一次", "如今",
+];
+const EARLIEST_CUES: &[&str] = &[
+    "at first", "initially", "originally", "initial", "first time", "earliest", "to begin with", "in the beginning",
+    "最初", "一开始", "起初", "最早", "第一次",
 ];
 const MENTION_ORDER_CUES: &[&str] = &[
     "order in which i", "order i brought", "order i mentioned", "brought up", "i mentioned first",
@@ -136,6 +148,8 @@ pub fn intent(text: &str) -> Intent {
         mention_order: has(MENTION_ORDER_CUES),
         overview: has(OVERVIEW_CUES),
         yes_no: YES_NO_STARTS.iter().any(|start| text.trim_start().starts_with(start)),
+        recent: has(RECENT_CUES),
+        earliest: has(EARLIEST_CUES),
     }
 }
 
@@ -164,10 +178,128 @@ pub const RELEVANT_TURNS: usize = 20;
 /// Share of a packing budget the user's messages may take (`Query::turns`).
 const TURN_SHARE: f64 = 0.3;
 
+/// Largest score change for when something was said (`time_salience`).
+const TIME_SALIENCE: f64 = 0.08;
+/// Memories this similar that give different numbers are one thing at different times.
+const CHAIN_SIMILARITY: f32 = 0.82;
+const MAX_CHAINS: usize = 5;
+
+/// For a question about the current or the first state of things, raise the later (or
+/// earlier) memories by up to TIME_SALIENCE, by their place in time among the hits, so
+/// that recency interacts with relevance instead of only ordering what was found.
+fn time_salience(wanted: &Intent, hits: &mut [Hit]) {
+    if wanted.recent == wanted.earliest {
+        return;
+    }
+    let mut keys: Vec<(String, usize)> = hits
+        .iter()
+        .filter(|h| !leading(h) && h.channel != "episode" && !h.memory.derived())
+        .map(|h| (date_key(&h.memory), h.turn.unwrap_or(0)))
+        .collect();
+    keys.sort();
+    keys.dedup();
+    if keys.len() < 2 {
+        return;
+    }
+    let last = (keys.len() - 1) as f64;
+    for hit in hits.iter_mut().filter(|h| !leading(h) && h.channel != "episode" && !h.memory.derived()) {
+        let key = (date_key(&hit.memory), hit.turn.unwrap_or(0));
+        let place = keys.binary_search(&key).unwrap_or(0) as f64 / last;
+        let lift = if wanted.recent { place } else { 1.0 - place };
+        hit.score += TIME_SALIENCE * lift;
+        hit.reason.push_str(&format!(" time:{lift:.2}"));
+    }
+    let lead = hits.iter().take_while(|h| leading(h)).count();
+    hits[lead..].sort_by(|a, b| b.score.total_cmp(&a.score).then_with(|| a.memory.id.cmp(&b.memory.id)));
+}
+
+/// Statements about one thing at different times, made explicit: memories among the hits
+/// that are very similar but give different numbers, chained oldest first (the last is the
+/// latest), so a reader takes the latest value and sees when it changed.
+fn time_chains(store: &Store, hits: &[Hit]) -> Option<Hit> {
+    let members: Vec<&Hit> = hits.iter().filter(|h| h.channel == "search" && !h.memory.derived()).collect();
+    let vectors: Vec<Option<Vec<f32>>> = members.iter().map(|h| store.with_index(|index, _| index.vector(&h.memory.id).cloned())).collect();
+    let numbers = |h: &Hit| -> Vec<String> {
+        let mut n = crate::extract::numbers(&crate::extract::strip_dates(&h.memory.body));
+        n.sort();
+        n.dedup();
+        n
+    };
+    let mut used = vec![false; members.len()];
+    let mut chains: Vec<Vec<usize>> = vec![];
+    for i in 0..members.len() {
+        if used[i] || numbers(members[i]).is_empty() {
+            continue;
+        }
+        let Some(seed) = vectors[i].as_ref() else { continue };
+        let mut chain = vec![i];
+        for j in i + 1..members.len() {
+            if used[j] {
+                continue;
+            }
+            let close = vectors[j].as_ref().is_some_and(|v| crate::embed::dot(seed, v) >= CHAIN_SIMILARITY);
+            if close && !numbers(members[j]).is_empty() && numbers(members[j]) != numbers(members[i]) {
+                chain.push(j);
+            }
+        }
+        if chain.len() >= 2 {
+            chain.iter().for_each(|&k| used[k] = true);
+            chains.push(chain);
+        }
+        if chains.len() == MAX_CHAINS {
+            break;
+        }
+    }
+    if chains.is_empty() {
+        return None;
+    }
+    let mut lines = vec!["Statements about the same thing at different times (oldest first; the last is the latest unless it says otherwise):".to_string()];
+    for chain in chains {
+        let mut chain: Vec<&Hit> = chain.into_iter().map(|k| members[k]).collect();
+        chain.sort_by_key(|h| (date_key(&h.memory), h.turn.unwrap_or(0)));
+        let steps: Vec<String> = chain
+            .iter()
+            .map(|h| {
+                let said = h.memory.observed_at.clone().unwrap_or_else(|| h.memory.created_at.chars().take(10).collect());
+                let turn = h.turn.map(|t| format!(", #{t}")).unwrap_or_default();
+                format!("[{said}{turn}] {}", h.memory.body)
+            })
+            .collect();
+        lines.push(format!("- {}", steps.join(" → ")));
+    }
+    let mut memory = Memory::episode("timechains", None, lines.join("\n"), None);
+    memory.kind = "timechain".into();
+    memory.title = "Changes over time".into();
+    Some(Hit { memory, channel: "timechain", score: 1.0, reason: "timechain".into(), group: None, turn: None })
+}
+
+/// Candidates a reranker reorders in one search.
+const RERANK_CANDIDATES: usize = 80;
+
+/// Reorder the best ranked hits (not the leading ones) by a cross-encoder's relevance to
+/// `text`; their score becomes its probability. Hits past the candidates keep their order
+/// after them. Without the model the order is kept.
+fn rerank(store: &Store, name: &str, text: &str, hits: &mut Vec<Hit>) -> Result<()> {
+    let Some(model) = store.reranker.load(name) else { return Ok(()) };
+    let lead = hits.iter().take_while(|h| leading(h)).count();
+    let mut ranked = hits.split_off(lead);
+    let rest = ranked.split_off(ranked.len().min(RERANK_CANDIDATES));
+    let documents: Vec<String> = ranked.iter().map(|h| h.memory.body.clone()).collect();
+    let scores = model.scores(text, &documents)?;
+    for (hit, score) in ranked.iter_mut().zip(scores) {
+        hit.score = 1.0 / (1.0 + (-score as f64).exp());
+        hit.reason.push_str(&format!(" rerank:{score:.2}"));
+    }
+    ranked.sort_by(|a, b| b.score.total_cmp(&a.score).then_with(|| a.memory.id.cmp(&b.memory.id)));
+    hits.extend(ranked);
+    hits.extend(rest);
+    Ok(())
+}
+
 /// Hits that stay at the top in this order: rules, the user's standing instructions,
 /// unresolved contradictions, the conversation timeline, the user's messages.
 fn leading(hit: &Hit) -> bool {
-    matches!(hit.channel, "rule" | "instruction" | "conflict" | "timeline" | "turnlog")
+    matches!(hit.channel, "rule" | "instruction" | "conflict" | "timechain" | "timeline" | "turnlog")
 }
 
 /// Characters of an excerpt kept around its best-matching sentence when packing. Whole
@@ -310,14 +442,32 @@ fn episode_hits(
 }
 
 pub fn recall(store: &Store, query: &Query) -> Result<Vec<Hit>> {
-    let mut hits = recall_ranked(store, query)?;
+    let hits = recall_ranked(store, query)?;
+    finish(store, query, hits, &[])
+}
+
+/// Search mode's work after ranking (shared by a plain and a planned search): reranking,
+/// conversation positions, topic groups, contradiction notes, the timeline, the user's
+/// messages (also for `subqueries`) and packing into the budget.
+fn finish(store: &Store, query: &Query, mut hits: Vec<Hit>, subqueries: &[String]) -> Result<Vec<Hit>> {
     if query.mode == Mode::Search {
+        if let (Some(name), Some(text)) = (store.config.recall.rerank.as_deref(), query.text) {
+            rerank(store, name, text, &mut hits)?;
+        }
         for hit in hits.iter_mut() {
             hit.turn = position(store, &hit.memory, hit.channel);
+        }
+        let chains = store.config.recall.time_chains;
+        if let (true, Some(text)) = (chains, query.text) {
+            time_salience(&intent(text), &mut hits);
         }
         group_by_topic(store, &mut hits);
         if let Some(text) = query.text {
             let wanted = intent(text);
+            if let Some(hit) = time_chains(store, &hits).filter(|_| chains) {
+                let at = hits.iter().take_while(|h| leading(h)).count();
+                hits.insert(at, hit);
+            }
             // A contradiction is raised only when asked whether something is so; for a
             // count, a date or a summary both statements are just evidence.
             if wanted.yes_no {
@@ -332,7 +482,8 @@ pub fn recall(store: &Store, query: &Query) -> Result<Vec<Hit>> {
             }
             if query.turns {
                 let chars = query.budget.map_or(TURN_LOG_CHARS / 4, |b| (b as f64 * 4.0 * TURN_SHARE) as usize);
-                if let Some(hit) = turn_log(store, text, query.project, chars)? {
+                let texts: Vec<&str> = std::iter::once(text).chain(subqueries.iter().map(String::as_str)).collect();
+                if let Some(hit) = turn_log_for(store, &texts, query.project, chars)? {
                     let at = hits.iter().take_while(|h| leading(h)).count();
                     hits.insert(at, hit);
                 }
@@ -561,8 +712,7 @@ pub fn recall_planned(store: &Store, query: &Query, plan: &Plan) -> Result<Vec<H
         }
     }
     hits.truncate(cap);
-    group_by_topic(store, &mut hits);
-    Ok(hits)
+    finish(store, query, hits, &plan.queries)
 }
 
 /// The day range a (possibly partial) date covers, as yyyymmdd numbers:
@@ -711,6 +861,58 @@ fn recall_ranked(store: &Store, query: &Query) -> Result<Vec<Hit>> {
                         },
                     );
                 }
+                // One step along entities: memories that name an entity of the best
+                // matches (two memories naming one person, place or product are linked),
+                // ranked below their source. Entities named in most memories (the user,
+                // the project) link everything and are skipped.
+                if store.config.recall.entity_hops {
+                    let mut seeds: Vec<(&String, f64)> = found
+                        .iter()
+                        .filter(|(_, h)| h.channel == "search" && !h.memory.derived())
+                        .map(|(id, h)| (id, h.score))
+                        .collect();
+                    seeds.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+                    let mut counts: HashMap<String, usize> = HashMap::new();
+                    for memory in all.values().filter(|m| usable(m) && !m.derived()) {
+                        for entity in &memory.entities {
+                            *counts.entry(entity.to_lowercase()).or_insert(0) += 1;
+                        }
+                    }
+                    let mut via: HashMap<String, f64> = HashMap::new();
+                    for (id, score) in seeds.into_iter().take(ENTITY_HOP_SEEDS) {
+                        for entity in &found[id].memory.entities {
+                            let key = entity.to_lowercase();
+                            if counts.get(&key).copied().unwrap_or(0) <= ENTITY_HOP_MAX_MEMORIES && !mentions(text, entity) {
+                                let best = via.entry(key).or_insert(0.0);
+                                *best = best.max(score);
+                            }
+                        }
+                    }
+                    let mut linked: Vec<(f64, String, &Memory)> = all
+                        .values()
+                        .filter(|m| !m.always_on() && usable(m) && !m.derived() && !found.contains_key(&m.id))
+                        .filter_map(|m| {
+                            m.entities
+                                .iter()
+                                .filter_map(|e| via.get(&e.to_lowercase()).map(|s| (*s, e.clone())))
+                                .max_by(|a, b| a.0.total_cmp(&b.0))
+                                .map(|(score, entity)| (score, entity, m))
+                        })
+                        .collect();
+                    linked.sort_by(|a, b| b.0.total_cmp(&a.0).then_with(|| a.2.id.cmp(&b.2.id)));
+                    for (score, entity, memory) in linked.into_iter().take((query.limit / 4).max(3)) {
+                        found.insert(
+                            memory.id.clone(),
+                            Hit {
+                                memory: memory.clone(),
+                                channel: "search",
+                                score: score * ENTITY_HOP,
+                                reason: format!("via entity:{entity}"),
+                                group: None, turn: None,
+                            },
+                        );
+                    }
+                }
                 // The user's standing instructions ("always include a tree diagram when
                 // explaining probability"), the most relevant few, whatever their score.
                 let instructions = |id: &str| all.get(id).is_some_and(|m| m.kind == "instruction" && !m.always_on() && usable(m));
@@ -815,6 +1017,11 @@ fn topics(vectors: &[Option<Vec<f32>>]) -> Vec<Vec<usize>> {
 /// Base score of a memory found only through the entity index, and the boost for any
 /// memory whose entities the question names.
 const ENTITY_SCORE: f64 = 0.4;
+/// Entity links (`recall.entity_hops`): the best matches they start from, the score kept
+/// along a link, and how many memories may name an entity before it links too much.
+const ENTITY_HOP_SEEDS: usize = 8;
+const ENTITY_HOP: f64 = 0.7;
+const ENTITY_HOP_MAX_MEMORIES: usize = 12;
 const SUPERSEDED_DISCOUNT: f32 = 0.9;
 /// A memory's source excerpt must be at least this similar to it, and ranks just below it.
 const SOURCE_SIMILARITY: f32 = 0.55;
@@ -917,10 +1124,13 @@ pub(crate) fn ranked_turns(store: &Store, text: &str, vector: Option<&[f32]>, pr
 /// RELEVANT_TURNS most relevant. The user's own words decide what they said, did or
 /// planned, and the turn numbers which of two things came later on the same day.
 pub fn turn_log(store: &Store, text: &str, project: Option<&str>, chars: usize) -> Result<Option<Hit>> {
-    let vector = match store.embedder.get() {
-        Some(embedder) => Some(embedder.embed_query(text)?),
-        None => None,
-    };
+    turn_log_for(store, &[text], project, chars)
+}
+
+/// `turn_log` for a question (first) and the sub-queries planned for it: the messages
+/// most relevant to any of them, taken from each ranking in turn.
+pub fn turn_log_for(store: &Store, texts: &[&str], project: Option<&str>, chars: usize) -> Result<Option<Hit>> {
+    let Some(&text) = texts.first() else { return Ok(None) };
     let wanted = intent(text);
     let whole = wanted.overview || wanted.mention_order || wanted.aggregate;
     // The gist of the assistant's replies only where the question is about them: what
@@ -928,7 +1138,25 @@ pub fn turn_log(store: &Store, text: &str, project: Option<&str>, chars: usize) 
     // is otherwise taken for what the user did or said (a suggested setting read as the
     // one the user chose, a general figure read as the user's latest value).
     let notes = summary_question(&wanted);
-    let ranked = ranked_turns(store, text, vector.as_deref(), project);
+    let mut rankings = vec![];
+    for text in texts {
+        let vector = match store.embedder.get() {
+            Some(embedder) => Some(embedder.embed_query(text)?),
+            None => None,
+        };
+        rankings.push(ranked_turns(store, text, vector.as_deref(), project));
+    }
+    let mut ranked: Vec<(String, f32)> = vec![];
+    let mut seen = HashSet::new();
+    for rank in 0..rankings.iter().map(Vec::len).max().unwrap_or(0) {
+        for ranking in &rankings {
+            if let Some((id, score)) = ranking.get(rank)
+                && seen.insert(id.clone())
+            {
+                ranked.push((id.clone(), *score));
+            }
+        }
+    }
     let (lines, count, total) = store.with_episodes(|e| {
         let line = |t: &crate::episode::Turn| {
             let mut body: String = t.text.chars().take(TURN_LINE_CHARS).collect();
@@ -1369,8 +1597,9 @@ mod tests {
     #[test]
     fn intent_from_wording() {
         assert_eq!(intent("How many times did I bake last month?"), Intent { aggregate: true, ..Default::default() });
-        assert_eq!(intent("Which streaming service did I start using most recently?"), Intent { temporal: true, ..Default::default() });
-        assert_eq!(intent("我一共去过几次杭州？最近一次是哪天？"), Intent { aggregate: true, temporal: true, ..Default::default() });
+        assert_eq!(intent("Which streaming service did I start using most recently?"), Intent { temporal: true, recent: true, ..Default::default() });
+        assert_eq!(intent("我一共去过几次杭州？最近一次是哪天？"), Intent { aggregate: true, temporal: true, recent: true, ..Default::default() });
+        assert!(intent("What was my budget at first?").earliest && intent("What is my current budget?").recent);
         assert!(intent("What was the name of the hostel you recommended last time?").conversation);
         assert!(intent("上次你推荐的那本书叫什么？").conversation);
         assert_eq!(intent("What's my sister's name?"), Intent::default());
@@ -1533,6 +1762,49 @@ mod tests {
         drop(store);
         let reopened = Store::open(dir.path()).unwrap();
         assert_eq!(log(&reopened, summary), noted, "the same numbering and notes after a reopen");
+    }
+
+    #[test]
+    fn search_follows_one_entity_link_from_the_best_matches() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::store::init(dir.path()).unwrap();
+        let mut config = crate::store::load_config(dir.path()).unwrap();
+        config.embedding.enabled = false;
+        config.recall.entity_hops = true;
+        Store::save_config(dir.path(), &config).unwrap();
+        let store = Store::open(dir.path()).unwrap();
+        let with_entities = |content: &str, entities: &[&str]| {
+            let id = add(&store, content, "fact", "q", None);
+            let mut memory = store.memory(&id).unwrap();
+            memory.entities = entities.iter().map(|e| e.to_string()).collect();
+            store.save_memory(&memory, "entities").unwrap();
+            id
+        };
+        let moved = with_entities("The user's sister moved to Lisbon in November", &["Mira", "Lisbon"]);
+        let job = with_entities("She started a new job at a design studio", &["Mira"]);
+        let unrelated = with_entities("The user adopted a cat", &["Miso"]);
+        let found: Vec<Hit> = recall(&store, &Query { text: Some("Where did my sister move?"), project: Some("q"), limit: 10, mode: Mode::Search, ..Default::default() }).unwrap();
+        let ids: Vec<&str> = found.iter().map(|h| h.memory.id.as_str()).collect();
+        assert!(ids.contains(&moved.as_str()) && ids.contains(&job.as_str()) && !ids.contains(&unrelated.as_str()), "{ids:?}");
+        let linked = found.iter().find(|h| h.memory.id == job).unwrap();
+        assert!(linked.reason.contains("via entity:Mira"), "{}", linked.reason);
+    }
+
+    #[test]
+    fn changed_values_form_a_time_chain_and_recent_questions_favour_later_statements() {
+        let hit = |id: &str, body: &str, date: &str, turn: usize| {
+            let mut memory = Memory::episode(id, Some("q"), body.into(), Some(date.into()));
+            memory.kind = "fact".into();
+            Hit { memory, channel: "search", score: 0.5, reason: String::new(), group: None, turn: Some(turn) }
+        };
+        let mut hits = vec![hit("mem_b", "Monthly gym fee is $45.", "2024/09/15", 9), hit("mem_a", "Monthly gym fee is $40.", "2024/03/01", 2)];
+        time_salience(&intent("What is my current gym fee?"), &mut hits);
+        assert_eq!(hits[0].memory.id, "mem_b", "the later statement first");
+        assert!(hits[0].score > hits[1].score);
+        time_salience(&intent("What was my gym fee at first?"), &mut hits);
+        assert_eq!(hits[0].memory.id, "mem_a");
+        let (_dir, store) = store();
+        assert!(time_chains(&store, &hits).is_none(), "no vectors, no chain");
     }
 
     #[test]

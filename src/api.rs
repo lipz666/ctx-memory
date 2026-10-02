@@ -281,7 +281,9 @@ pub async fn recall(
         // besides the gathered hits.
         let mut log: Vec<recall::Hit> = vec![];
         if brief {
-            log.extend(recall::turn_log(&store, &params.q, params.project.as_deref(), recall::TURN_LOG_CHARS)?);
+            let texts: Vec<&str> =
+                std::iter::once(params.q.as_str()).chain(plan.iter().flat_map(|p| p.queries.iter().map(String::as_str))).collect();
+            log.extend(recall::turn_log_for(&store, &texts, params.project.as_deref(), recall::TURN_LOG_CHARS)?);
             for dossier in crate::dossier::relevant(&store, &params.q, params.project.as_deref(), crate::dossier::BRIEF_DOSSIERS)? {
                 if !hits.iter().any(|h| h.memory.id == dossier.memory.id) {
                     log.push(dossier);
@@ -326,7 +328,7 @@ pub async fn recall(
     } else {
         hits
     };
-    Ok(axum::Json(json!(lead.into_iter().chain(hits.iter().map(|h| json!({"id":h.memory.id,"title":h.memory.title,"content":h.memory.body,"type":h.memory.kind,"scope":h.memory.scope,"score":h.score,"channel":h.channel,"group":h.group,"observed_at":h.memory.observed_at,"event_at":h.memory.event_at,"topics":h.memory.topics,"history":recall::history(&app.store, &h.memory, 3).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"conflicts":if yes_no { recall::conflicts(&app.store, &h.memory).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>() } else { vec![] },"turn":h.turn,"mentioned":if matches!(h.channel, "episode" | "timeline" | "conflict" | "turnlog" | "turn") || h.memory.derived() { serde_json::Value::Null } else { json!(recall::mention_rank(&app.store, &h.memory)) },"status":h.memory.status,"mentioned_at":h.memory.mentioned_at,"created_at":h.memory.created_at}))).collect::<Vec<_>>())))
+    Ok(axum::Json(json!(lead.into_iter().chain(hits.iter().map(|h| json!({"id":h.memory.id,"title":h.memory.title,"content":h.memory.body,"type":h.memory.kind,"scope":h.memory.scope,"score":h.score,"channel":h.channel,"group":h.group,"observed_at":h.memory.observed_at,"event_at":h.memory.event_at,"topics":h.memory.topics,"history":recall::history(&app.store, &h.memory, 3).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>(),"conflicts":if yes_no { recall::conflicts(&app.store, &h.memory).into_iter().map(|(date, content)| json!({"date":date,"content":content})).collect::<Vec<_>>() } else { vec![] },"turn":h.turn,"mentioned":if matches!(h.channel, "episode" | "timeline" | "conflict" | "turnlog" | "turn" | "timechain") || h.memory.derived() { serde_json::Value::Null } else { json!(recall::mention_rank(&app.store, &h.memory)) },"status":h.memory.status,"mentioned_at":h.memory.mentioned_at,"created_at":h.memory.created_at}))).collect::<Vec<_>>())))
 }
 pub async fn step(State(app): State<App>, Path(id): Path<String>, headers: HeaderMap) -> ApiResult {
     require(&headers, &app.store)?;

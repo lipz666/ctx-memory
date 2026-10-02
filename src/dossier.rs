@@ -171,7 +171,47 @@ pub async fn update(store: &Store, session: &SessionRow, entries: &[(String, Str
     let mut topics: Vec<String> = found.into_iter().map(|(topic, _)| topic).collect();
     topics.sort();
     topics.dedup();
-    refresh(store, &scope, &topics)
+    let mut written = refresh(store, &scope, &topics)?;
+    if store.config.extraction.dossier_overviews {
+        written.extend(write_overviews(store, &scope, &topics).await?);
+    }
+    Ok(written)
+}
+
+/// Records a topic needs before it gets a written overview.
+const OVERVIEW_MIN_RECORDS: usize = 8;
+
+const OVERVIEW_PROMPT: &str = "You write the overview at the top of a dossier on one subject in a person's long-term memory. You get the dossier: records gathered over their conversations with an assistant (current values with earlier ones, items of each kind, dated events, and stages, with turn numbers # that give the order). Write a factual account of at most 220 words: what the subject is and where it stands now (the current values), then how it went, stage by stage in order, with the specific numbers, names, dates and decisions and what the assistant recommended at each stage, and the main items. Keep the turn numbers of points that changed over time. Only what the records say. Plain text, no heading.";
+
+/// Write the overview of the topics whose records have grown by half or by 15 since their
+/// overview (or that have none and enough records). Returns the dossiers rewritten.
+pub async fn write_overviews(store: &Store, scope: &str, topics: &[String]) -> Result<Vec<String>> {
+    let mut done = vec![];
+    for topic in topics {
+        let records = store.dossier_records(scope, topic)?;
+        let stale = match store.dossier_overview(scope, topic)? {
+            Some((count, _)) => records.len() >= count + count / 2 || records.len() >= count + 15,
+            None => records.len() >= OVERVIEW_MIN_RECORDS,
+        };
+        if !stale {
+            continue;
+        }
+        let dossier = render(topic, &records, None);
+        let overview = llm::chat(store, "dossier", OVERVIEW_PROMPT, &dossier, 1200, Duration::from_secs(180)).await?;
+        store.set_dossier_overview(scope, topic, records.len(), overview.trim())?;
+        done.push(topic.clone());
+    }
+    refresh(store, scope, &done)
+}
+
+/// Write the overviews that are missing or out of date in every scope.
+pub async fn write_all_overviews(store: &Store) -> Result<usize> {
+    let mut count = 0;
+    for scope in store.dossier_scopes()? {
+        let topics: Vec<String> = store.dossier_topics(&scope)?.into_iter().map(|(topic, _)| topic).collect();
+        count += write_overviews(store, &scope, &topics).await?.len();
+    }
+    Ok(count)
 }
 
 /// Render the dossiers of `topics` in `scope` from their records and save the ones that
@@ -187,7 +227,8 @@ pub fn refresh(store: &Store, scope: &str, topics: &[String]) -> Result<Vec<Stri
         if store.config.extraction.narratives {
             written.extend(sync_narratives(store, &all, scope, topic, &records)?);
         }
-        let body = render(topic, &records);
+        let overview = store.dossier_overview(scope, topic)?.map(|(_, text)| text);
+        let body = render(topic, &records, overview.as_deref());
         let existing = all.iter().find(|m| m.kind == "dossier" && m.scope == scope && m.topics.first() == Some(topic));
         let mut dossier = match existing {
             Some(existing) if existing.body == body => continue,
@@ -296,7 +337,7 @@ fn fit(lines: Vec<String>, chars: usize) -> Vec<String> {
 }
 
 /// A topic's dossier from its records.
-pub fn render(topic: &str, records: &[Record]) -> String {
+pub fn render(topic: &str, records: &[Record], overview: Option<&str>) -> String {
     let order = |r: &Record| (r.turn, r.said.clone().unwrap_or_default());
     let mut sorted: Vec<&Record> = records.iter().collect();
     sorted.sort_by_key(|r| order(r));
@@ -378,6 +419,9 @@ pub fn render(topic: &str, records: &[Record]) -> String {
     let mut body = format!(
         "Dossier on \"{topic}\", from all conversations (turn numbers # give the order: a higher one is later):"
     );
+    if let Some(overview) = overview {
+        body.push_str(&format!("\nOverview:\n{}", overview.trim()));
+    }
     for (heading, lines, chars) in [
         ("Current values (with earlier ones)", values, SECTION_CHARS[0]),
         ("Items, by kind", items, SECTION_CHARS[1]),
@@ -433,7 +477,7 @@ mod tests {
             Record { last_turn: 6, ..record("stage", "", "Asked for a plan; the coach-style reply suggested 3 runs a week.", 4) },
             record("stage", "", "Reported the half marathon; decided to train for a full one.", 8),
         ];
-        let body = render("marathon training", &records);
+        let body = render("marathon training", &records, None);
         assert!(body.contains("- gym membership: $45 per month (#9, said 2024/05/02, from 2024-09-15) — earlier: $40 per month (#3, said 2024/05/02)"), "{body}");
         assert!(body.contains("- races finished (2): Lisbon half marathon (#4, said 2024/05/02); Porto 10K (#6, said 2024/05/02)"), "{body}");
         let (done, planned) = (body.find("2024-05-01, done: first 20 km run").unwrap(), body.find("2024-06-12, planned: physio").unwrap());

@@ -1,0 +1,34 @@
+{
+  "system": "ctx-beam-v8b-reanswer-8k-deep-time-brief",
+  "questions": 100,
+  "conversations": 10,
+  "overall": 0.4911,
+  "abilities": {
+    "event_ordering": 0.3293,
+    "knowledge_update": 0.5,
+    "multi_session_reasoning": 0.5646,
+    "summarization": 0.4742,
+    "temporal_reasoning": 0.5875
+  },
+  "errors": 0,
+  "tau_nan": 0,
+  "budget_tokens": 8000,
+  "kept_tokens_mean": 7163,
+  "search_ms_p50": 17789.4,
+  "wall_seconds": 727,
+  "usage": {
+    "memories": 1784,
+    "episodes": 7735,
+    "engine_llm_calls": 885,
+    "engine_input_tokens": 6881467,
+    "engine_output_tokens": 388951,
+    "engine_failed_calls": 15,
+    "extracted_sessions": 279,
+    "failed_sessions": 0,
+    "reader_judge": {
+      "calls": 643,
+      "input_tokens": 1064425,
+      "output_tokens": 31878
+    }
+  }
+}

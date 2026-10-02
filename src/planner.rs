@@ -8,7 +8,7 @@ use std::time::Duration;
 
 const PROMPT: &str = "You plan searches over a person's long-term memory (facts and events from earlier conversations, each with a date). Given a question and today's date, return JSON only:
 {\"queries\":[\"...\"],\"after\":\"YYYY-MM-DD\"|null,\"before\":\"YYYY-MM-DD\"|null}
-- queries: 1 to 3 short search queries that together cover every part of the question. Split comparisons and multi-part questions (\"did I buy the camera or the lens first?\" -> \"camera purchase\", \"lens purchase\"); name the general category for totals and counts (\"how much did I spend on workshops?\" -> \"workshops attended cost\").
+- queries: 1 to 4 short search queries that together cover every part of the question. Split comparisons and multi-part questions (one query per thing named: \"considering my form validation, lazy loading and analytics setup, ...\" -> one query for each) (\"did I buy the camera or the lens first?\" -> \"camera purchase\", \"lens purchase\"); name the general category for totals and counts (\"how much did I spend on workshops?\" -> \"workshops attended cost\").
 - after/before: the date window the relevant events fall in, computed from today's date, only when the question states or implies one (\"last month\", \"in March\", \"two weeks ago\"); otherwise null.
 Do not wrap the JSON in Markdown.";
 
@@ -52,7 +52,7 @@ fn parse(reply: &str) -> Result<Plan> {
             .into_iter()
             .map(|q| q.trim().chars().take(300).collect::<String>())
             .filter(|q| !q.is_empty())
-            .take(3)
+            .take(4)
             .collect(),
         after: date(reply.after),
         before: date(reply.before),
