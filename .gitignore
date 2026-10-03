@@ -36,3 +36,4 @@ bench/beam-*/
 bench/results/*.sqlite-*
 # ccx object stores hold full tool outputs (may include host details); never commit
 bench/results/**/objects/
+bench/work-*/

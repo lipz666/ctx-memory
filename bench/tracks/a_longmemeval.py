@@ -140,6 +140,12 @@ def make_system(name, workdir, embed):
         from adapters.ctx import Ctx
         return Ctx(workdir / "ctx-v06-reanswer-home", name="ctx-v06-reanswer", prompt_file=BENCH / "prompts/ctx-general.txt",
                    episodes=5, budget=2000, reuse_from=workdir / "ctx-v06-home")
+    if name == "ctx-v06-reanswer-brief":
+        # The ctx-v06 store read as on BEAM: a brief written from a wide retrieval, then the
+        # hits, within 8,000 tokens (run with --budget 8000).
+        from adapters.ctx import Ctx
+        return Ctx(workdir / "ctx-v06-reanswer-brief-home", name="ctx-v06-reanswer-brief", prompt_file=BENCH / "prompts/ctx-general.txt",
+                   episodes=5, budget=8000, brief=True, reuse_from=workdir / "ctx-v06-home")
     if name == "ctx-v05-packed":
         # The same store; ctx packs the result for the reader's budget (memories first,
         # excerpts trimmed to the relevant window) and routes by question wording.

@@ -234,11 +234,14 @@ def main():
     parser.add_argument("--max-sessions", type=int, default=0, help="smoke tests: ingest only the first N sessions")
     parser.add_argument("--abilities", default="", help="comma-separated abilities to answer (default: all ten)")
     parser.add_argument("--shard", default="", help="i/n: only conversations whose position % n == i-1")
+    parser.add_argument("--first", type=int, default=0, help="only the first N conversations of the split")
     args = parser.parse_args()
     conversations = load(args.split)
     if args.conversations:
         wanted = set(args.conversations.split(","))
         conversations = [c for c in conversations if c["conversation_id"] in wanted]
+    if args.first:
+        conversations = conversations[:args.first]
     if args.shard:
         i, n = map(int, args.shard.split("/"))
         conversations = [c for k, c in enumerate(conversations) if k % n == i - 1]
