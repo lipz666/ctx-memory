@@ -1,0 +1,22 @@
+{
+  "system": "cognee-native",
+  "questions": 2,
+  "conversations": 1,
+  "overall": 0.1899,
+  "abilities": {
+    "event_ordering": 0.1899
+  },
+  "errors": 0,
+  "tau_nan": 0,
+  "budget_tokens": 1000,
+  "kept_tokens_mean": 17909,
+  "search_ms_p50": 7504.7,
+  "wall_seconds": 309,
+  "usage": {
+    "reader_judge": {
+      "calls": 53,
+      "input_tokens": 40206,
+      "output_tokens": 335
+    }
+  }
+}

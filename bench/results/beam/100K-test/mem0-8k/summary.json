@@ -1,0 +1,36 @@
+{
+  "system": "mem0-8k",
+  "questions": 200,
+  "conversations": 10,
+  "overall": 0.4837,
+  "abilities": {
+    "abstention": 0.8,
+    "contradiction_resolution": 0.2062,
+    "event_ordering": 0.2125,
+    "information_extraction": 0.5917,
+    "instruction_following": 0.4125,
+    "knowledge_update": 0.6,
+    "multi_session_reasoning": 0.46,
+    "preference_following": 0.775,
+    "summarization": 0.292,
+    "temporal_reasoning": 0.4875
+  },
+  "errors": 0,
+  "tau_nan": 0,
+  "budget_tokens": 8000,
+  "kept_tokens_mean": 903,
+  "search_ms_p50": 767.9,
+  "wall_seconds": 597,
+  "usage": {
+    "namespaces": 0,
+    "engine_llm_calls": 0,
+    "engine_input_tokens": 0,
+    "engine_output_tokens": 0,
+    "failed_sessions": 0,
+    "reader_judge": {
+      "calls": 304,
+      "input_tokens": 163660,
+      "output_tokens": 10318
+    }
+  }
+}
