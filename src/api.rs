@@ -520,9 +520,12 @@ pub struct EmbeddingInput {
     input: Value,
     #[serde(default)]
     model: Option<String>,
+    /// `"query"` embeds the texts as search queries; documents otherwise.
+    #[serde(default)]
+    kind: Option<String>,
 }
 /// OpenAI-compatible `POST /api/v1/embeddings` backed by the local embedding model, so
-/// other tools can share it. Texts are embedded as documents.
+/// other tools can share it. Texts are embedded as documents unless `kind` is `"query"`.
 pub async fn embeddings(
     State(app): State<App>,
     headers: HeaderMap,
@@ -547,14 +550,20 @@ pub async fn embeddings(
         return Err((StatusCode::BAD_REQUEST, "1..256 inputs".into()));
     }
     let store = app.store.clone();
+    let query = input.kind.as_deref() == Some("query");
     let (name, vectors) = tokio::task::spawn_blocking(move || {
         let model = store.config.embedding.model.clone();
         let embedder = store
             .embedder
             .load(&model, store.config.embedding.workers)
             .ok_or_else(|| anyhow::anyhow!("embedding model unavailable"))?;
-        let docs: Vec<(String, String)> = texts.into_iter().map(|t| ("none".into(), t)).collect();
-        anyhow::Ok((embedder.name.clone(), embedder.embed_documents(&docs)?))
+        let vectors = if query {
+            texts.iter().map(|t| embedder.embed_query(t)).collect::<anyhow::Result<Vec<_>>>()?
+        } else {
+            let docs: Vec<(String, String)> = texts.into_iter().map(|t| ("none".into(), t)).collect();
+            embedder.embed_documents(&docs)?
+        };
+        anyhow::Ok((embedder.name.clone(), vectors))
     })
     .await
     .map_err(api_error)?

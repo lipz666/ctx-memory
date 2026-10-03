@@ -1,0 +1,33 @@
+{
+  "system": "hindsight-1k",
+  "questions": 200,
+  "conversations": 10,
+  "overall": 0.4288,
+  "abilities": {
+    "abstention": 0.875,
+    "contradiction_resolution": 0.0813,
+    "event_ordering": 0.1761,
+    "information_extraction": 0.5167,
+    "instruction_following": 0.4,
+    "knowledge_update": 0.65,
+    "multi_session_reasoning": 0.2854,
+    "preference_following": 0.6333,
+    "summarization": 0.2325,
+    "temporal_reasoning": 0.4375
+  },
+  "errors": 0,
+  "tau_nan": 0,
+  "budget_tokens": 1000,
+  "kept_tokens_mean": 953,
+  "search_ms_p50": 1481.6,
+  "wall_seconds": 1317,
+  "usage": {
+    "retain_seconds": 4994.376558065414,
+    "sessions": 216,
+    "reader_judge": {
+      "calls": 932,
+      "input_tokens": 623980,
+      "output_tokens": 27548
+    }
+  }
+}

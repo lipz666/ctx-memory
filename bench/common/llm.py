@@ -38,10 +38,11 @@ def _db():
     return _local.db
 
 
-def _bump(**kwargs):
+def _bump(stats=None, **kwargs):
     with _stats_lock:
         for key, value in kwargs.items():
-            STATS[key] += value
+            target = STATS if stats is None else stats
+            target[key] = target.get(key, 0) + value
 
 
 _gateway_lock = threading.Lock()
@@ -70,25 +71,26 @@ def wait_for_gateway(max_wait=7200):
         return False
 
 
-def chat(messages, max_tokens=1024, temperature=0, tag="", use_cache=True, timeout=300, cycles=3):
+def chat(messages, max_tokens=1024, temperature=0, tag="", use_cache=True, timeout=300, cycles=3, stats=None):
     """Return the assistant text. After repeated failures, wait for the gateway and try
-    again (`cycles` times) before raising."""
+    again (`cycles` times) before raising. `stats`: a dict counting this call instead of
+    the global STATS (engine calls kept apart from answering and judging)."""
     for cycle in range(cycles):
         try:
-            return _chat_once(messages, max_tokens, temperature, tag, use_cache, timeout)
+            return _chat_once(messages, max_tokens, temperature, tag, use_cache, timeout, stats)
         except RuntimeError:
             if cycle == cycles - 1:
                 raise
             wait_for_gateway()
 
 
-def _chat_once(messages, max_tokens, temperature, tag, use_cache, timeout):
+def _chat_once(messages, max_tokens, temperature, tag, use_cache, timeout, stats=None):
     body = {"model": MODEL, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
     key = hashlib.sha256(json.dumps([body, tag], sort_keys=True).encode()).hexdigest()
     if use_cache:
         row = _db().execute("SELECT reply FROM cache WHERE key=?", (key,)).fetchone()
         if row:
-            _bump(cached=1)
+            _bump(stats, cached=1)
             return row[0]
     data = json.dumps(body).encode()
     for attempt in range(8):
@@ -102,7 +104,7 @@ def _chat_once(messages, max_tokens, temperature, tag, use_cache, timeout):
             if not text:
                 raise ValueError("empty reply")
             usage = payload.get("usage") or {}
-            _bump(calls=1, input_tokens=usage.get("prompt_tokens") or 0, output_tokens=usage.get("completion_tokens") or 0)
+            _bump(stats, calls=1, input_tokens=usage.get("prompt_tokens") or 0, output_tokens=usage.get("completion_tokens") or 0)
             if use_cache:
                 _db().execute("INSERT OR REPLACE INTO cache VALUES (?,?)", (key, text))
                 _db().commit()

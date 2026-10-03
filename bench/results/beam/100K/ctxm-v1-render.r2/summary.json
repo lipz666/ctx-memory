@@ -1,0 +1,34 @@
+{
+  "system": "ctxm-v1-render.r2",
+  "questions": 200,
+  "conversations": 10,
+  "overall": 0.5144,
+  "abilities": {
+    "abstention": 0.625,
+    "contradiction_resolution": 0.5687,
+    "event_ordering": 0.2008,
+    "information_extraction": 0.4875,
+    "instruction_following": 0.55,
+    "knowledge_update": 0.8,
+    "multi_session_reasoning": 0.1967,
+    "preference_following": 0.8417,
+    "summarization": 0.3358,
+    "temporal_reasoning": 0.5375
+  },
+  "errors": 0,
+  "tau_nan": 0,
+  "budget_tokens": 1000,
+  "kept_tokens_mean": 948,
+  "search_ms_p50": 180.5,
+  "wall_seconds": 1447,
+  "usage": {
+    "engine_llm": {},
+    "cards": 26,
+    "records": 1958,
+    "reader_judge": {
+      "calls": 980,
+      "input_tokens": 610551,
+      "output_tokens": 34361
+    }
+  }
+}

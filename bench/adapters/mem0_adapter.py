@@ -141,3 +141,43 @@ class Mem0(MemorySystem):
         return {"namespaces": len(self.instances), "engine_llm_calls": self.tokens["calls"],
                 "engine_input_tokens": self.tokens["input_tokens"], "engine_output_tokens": self.tokens["output_tokens"],
                 "failed_sessions": len(self.failed_sessions)}
+
+
+class BeamMem0(Mem0):
+    """Mem0 for the BEAM track: starts its own embedding service, and keeps each finished
+    namespace (marker <ns>.done) so another budget answers from the same store."""
+
+    def __init__(self, workdir, name="mem0"):
+        self.name = name
+        super().__init__(workdir, CtxService(Path(workdir).parent / f"{Path(workdir).name}-embedder-home", embed_workers=1),
+                         reuse=True)
+        self.started = set()
+
+    def setup(self):
+        self.workdir.mkdir(parents=True, exist_ok=True)
+        self.embed.start()
+        super().setup()
+
+    def teardown(self):
+        self.embed.stop()
+
+    def _done(self, ns):
+        return self.workdir / f"{namespace(ns)}.done"
+
+    def ingest_session(self, ns, session_id, messages, timestamp, project=None):
+        if self._done(ns).exists():
+            return None
+        with self.lock:
+            fresh = ns not in self.started
+            self.started.add(ns)
+        if fresh and (self.workdir / namespace(ns)).exists():
+            shutil.rmtree(self.workdir / namespace(ns))  # an unfinished earlier attempt
+        self.reuse = False
+        try:
+            return super().ingest_session(ns, session_id, messages, timestamp, project)
+        finally:
+            self.reuse = True
+
+    def search(self, ns, query, project=None, limit=20, now=None):
+        self._done(ns).touch()
+        return super().search(ns, query, project, limit)

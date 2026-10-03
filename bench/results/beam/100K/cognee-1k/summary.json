@@ -1,0 +1,31 @@
+{
+  "system": "cognee-1k",
+  "questions": 200,
+  "conversations": 10,
+  "overall": 0.3311,
+  "abilities": {
+    "abstention": 0.675,
+    "contradiction_resolution": 0.0437,
+    "event_ordering": 0.1713,
+    "information_extraction": 0.4542,
+    "instruction_following": 0.5625,
+    "knowledge_update": 0.325,
+    "multi_session_reasoning": 0.18,
+    "preference_following": 0.7208,
+    "summarization": 0.0785,
+    "temporal_reasoning": 0.1
+  },
+  "errors": 0,
+  "tau_nan": 0,
+  "budget_tokens": 1000,
+  "kept_tokens_mean": 938,
+  "search_ms_p50": 89.4,
+  "wall_seconds": 1474,
+  "usage": {
+    "reader_judge": {
+      "calls": 514,
+      "input_tokens": 343682,
+      "output_tokens": 17350
+    }
+  }
+}

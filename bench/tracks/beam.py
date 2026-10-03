@@ -107,6 +107,31 @@ def order_events(rubric, response):
 
 
 def make_system(name, workdir, budget):
+    if name.startswith("ctxm"):
+        # ctx-m prototype: ctxm-<version>-render (no model at read) or ctxm-<version>-compose
+        # (one model call writes the note); both modes share the store of ctxm-<version>.
+        from adapters.ctxm import CtxM
+        # A ".label" after the mode only names the run (e.g. ctxm-v1-render.r2: new read
+        # code on the v1 store).
+        base, mode = name.rsplit("-", 1)
+        mode = mode.split(".")[0]
+        if mode not in ("render", "compose"):
+            raise ValueError(name)
+        return CtxM(workdir / f"{base}-store", name=name, mode=mode, budget=budget)
+    if name.startswith("hindsight-"):
+        # hindsight-1k (1,000-token recall) or hindsight-amb (Hindsight's own BEAM setting);
+        # the server runs separately (HINDSIGHT_URL), both modes share its banks.
+        from adapters.hindsight import Hindsight
+        return Hindsight(workdir / "hindsight-store", name=name, mode=name.split("-", 1)[1])
+    if name.startswith("cognee-"):
+        # Cognee 1.6.2 (cognee-1k, cognee-native); stores ingested beforehand under
+        # <workdir>/cognee-store/<ns> by bench/tools/cognee_beam.py.
+        from adapters.cognee import Cognee
+        return Cognee(workdir / "cognee-store", name=name, mode=name.split("-", 1)[1])
+    if name.startswith("mem0-"):
+        # Mem0 OSS 2.2.1 (mem0-1k, mem0-8k: the --budget of the run); one shared store.
+        from adapters.mem0_adapter import BeamMem0
+        return BeamMem0(workdir / "mem0-store", name=name)
     from adapters.ctx import Ctx
     prompt = BENCH / "prompts/ctx-general.txt"
     if "-reanswer" in name:

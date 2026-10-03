@@ -30,3 +30,7 @@ bench/data/beam/*.parquet
 bench/external/
 bench/results/loca/pilot-*/
 bench/results/loca/*.log
+
+# BEAM comparison: memory stores built by each system (rebuildable, large) and SQLite WAL files
+bench/beam-*/
+bench/results/*.sqlite-*
