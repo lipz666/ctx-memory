@@ -32,9 +32,9 @@ CTX_GW_KEY=... nohup tools/run_beam_test_split.sh mem0 cognee hindsight > result
 - 本机实测：写入加答题，每个系统 1.5–3 小时，合计约 3,000 万 token。Hindsight 和 Cognee 的写入最贵。
 - 内存：一次只跑一个系统（脚本已经这样安排）；机器在 32 GB 以上时，可以加大 `--workers`。
 
-### 2. 测试集：ctx-m（本地，进行中）
+### 2. 测试集：ctx-m（已完成）
 
-`tools/run_beam_test_split.sh ctxm`，正在本机运行，结果写到 `results/beam/100K-test/ctxm-v1-render*`，跑完后提交。
+ctx-m r2 在测试集上 **52.09%**（开发集 51.44%），结果在 `results/beam/100K-test/ctxm-v1-render.r2/`。ctx v0.5 在测试集上 66.72%。
 
 ### 3. ctx v0.5 在测试集上的对照
 
