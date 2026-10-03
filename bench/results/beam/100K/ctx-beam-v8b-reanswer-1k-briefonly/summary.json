@@ -1,0 +1,39 @@
+{
+  "system": "ctx-beam-v8b-reanswer-1k-briefonly",
+  "questions": 200,
+  "conversations": 10,
+  "overall": 0.6282,
+  "abilities": {
+    "abstention": 0.875,
+    "contradiction_resolution": 0.6625,
+    "event_ordering": 0.2585,
+    "information_extraction": 0.7,
+    "instruction_following": 0.7625,
+    "knowledge_update": 0.775,
+    "multi_session_reasoning": 0.3242,
+    "preference_following": 0.8458,
+    "summarization": 0.4658,
+    "temporal_reasoning": 0.6125
+  },
+  "errors": 0,
+  "tau_nan": 0,
+  "budget_tokens": 1000,
+  "kept_tokens_mean": 459,
+  "search_ms_p50": 9031.8,
+  "wall_seconds": 2025,
+  "usage": {
+    "memories": 1264,
+    "episodes": 5723,
+    "engine_llm_calls": 722,
+    "engine_input_tokens": 8397127,
+    "engine_output_tokens": 346826,
+    "engine_failed_calls": 0,
+    "extracted_sessions": 216,
+    "failed_sessions": 0,
+    "reader_judge": {
+      "calls": 980,
+      "input_tokens": 536800,
+      "output_tokens": 44404
+    }
+  }
+}

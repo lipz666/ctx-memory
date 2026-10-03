@@ -141,13 +141,16 @@ def make_system(name, workdir, budget):
         # ...-reanswer-brief: ctx writes a brief for each question (one model call);
         # ...-reanswer-agent: the brief writer may call tools over the memory first.
         agent = name.endswith("-agent")
+        # ...-briefonly: the brief alone gets the whole budget (no hits after it).
+        brief_only = name.endswith("-briefonly")
         # ...-rerank-...: candidates reordered by the local cross-encoder.
         settings = {"rerank": "jina-reranker-v1-turbo-en"} if "-rerank" in name else {}
         # ...-time-: time salience and chains; ...-hops-: one step along entity links.
         settings.update({"time_chains": str("-time" in name).lower(), "entity_hops": str("-hops" in name).lower()})
         # ...-deep-...: the question is planned into sub-queries searched separately.
         return Ctx(workdir / f"{name}-home", name=name, prompt_file=prompt, episodes=max(5, budget // 800),
-                   budget=budget, reuse_from=workdir / f"{base}-home", brief=name.endswith("-brief") or agent, agent=agent,
+                   budget=budget, reuse_from=workdir / f"{base}-home", brief=name.endswith("-brief") or agent or brief_only,
+                   agent=agent, brief_only=brief_only,
                    recall=settings, overviews="-dov" in name, deep="-deep" in name)
     if name == "ctx-beam" or name.startswith("ctx-beam-v"):
         # ctx-beam-vN: the same configuration on a newer engine (run with CTX_BIN), kept apart;

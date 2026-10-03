@@ -224,6 +224,8 @@ pub struct RecallParams {
     /// messages, whole turns, the timeline, a day calculator) before writing; more model
     /// calls on questions that need checking (see `agent.rs`).
     agent: Option<bool>,
+    /// With `brief`: the brief alone, given the whole `budget` (no hits after it).
+    brief_only: Option<bool>,
 }
 pub async fn recall(
     State(app): State<App>,
@@ -254,6 +256,7 @@ pub async fn recall(
     let turns = params.turns == Some(true) && !brief;
     let params_dry_run = params.dry_run == Some(true);
     let use_agent = brief && params.agent == Some(true);
+    let brief_only = brief && params.brief_only == Some(true);
     let project = params.project.clone();
     let (hits, log) = tokio::task::spawn_blocking(move || -> anyhow::Result<(Vec<recall::Hit>, Vec<recall::Hit>)> {
         let query = Query {
@@ -313,7 +316,7 @@ pub async fn recall(
         } else {
             crate::brief::BRIEF_TOKENS
         };
-        let tokens = (total * 2 / 5).min(cap);
+        let tokens = if brief_only { total } else { (total * 2 / 5).min(cap) };
         let material: Vec<recall::Hit> = log.into_iter().chain(hits.iter().cloned()).collect();
         let written = if use_agent {
             crate::agent::brief(app.store.clone(), &question, today.as_deref(), project, &material, tokens).await
@@ -322,9 +325,15 @@ pub async fn recall(
         };
         match written {
             Ok((text, steps)) => {
+                // Alone, the brief is held to the budget (the writer can run over).
+                let text = if brief_only { text.chars().take(total * 4).collect() } else { text };
                 let used = text.chars().count() / 4 + 12;
                 lead.push(json!({"id":"brief","title":"Memory brief","content":text,"type":"brief","channel":"brief","score":1.0,"sources":hits.len(),"steps":steps}));
-                recall::pack(hits, &question, total.saturating_sub(used))
+                if brief_only {
+                    vec![]
+                } else {
+                    recall::pack(hits, &question, total.saturating_sub(used))
+                }
             }
             Err(_) => recall::pack(hits, &question, total),
         }

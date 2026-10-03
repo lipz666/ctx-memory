@@ -144,7 +144,7 @@ def namespace(ns):
 class Ctx(MemorySystem):
     """ctx with its built-in extraction prompt (tuned for coding work), or a variant prompt."""
 
-    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None, brief=False, turns=False, agent=False, overviews=False):
+    def __init__(self, home, name="ctx", prompt_file=None, embed_workers=3, embedding=True, recall=None, mode="search", episodes=0, reuse_from=None, deep=False, budget=None, brief=False, turns=False, agent=False, overviews=False, brief_only=False):
         self.name = name
         self.failed_sessions = []
         self.mode = mode
@@ -155,6 +155,8 @@ class Ctx(MemorySystem):
         self.budget = budget
         # One model call turns a wide retrieval into a brief for the question.
         self.brief = brief
+        # The brief alone, given the whole budget (no hits after it).
+        self.brief_only = brief_only
         # Add the user's own messages in conversation order (within the budget).
         self.turns = turns
         # The brief writer may call tools over the memory before writing.
@@ -241,6 +243,8 @@ class Ctx(MemorySystem):
             args["budget"] = int(self.budget * 0.9)
         if self.brief:
             args["brief"] = "true"
+        if self.brief_only:
+            args["brief_only"] = "true"
         if self.turns:
             args["turns"] = "true"
         if self.agent:
