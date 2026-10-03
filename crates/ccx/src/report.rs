@@ -47,12 +47,27 @@ pub fn summarize(lines: &[Value]) -> Value {
     let mut shares = [0f64; CATEGORIES.len()];
     let mut sessions = BTreeSet::new();
     let mut errors = 0;
+    let mut original = vec![];
+    let mut shortened = std::collections::BTreeMap::<&str, u64>::new();
+    let mut expand_rounds = 0;
+    let mut expand_calls = 0;
     for line in lines {
         if line["status"].as_u64().is_some_and(|s| s >= 400) {
             errors += 1;
             continue;
         }
-        let est = &line["est"];
+        // In `on` mode the upstream saw the rewritten request.
+        let est = if line["est_sent"].is_object() {
+            &line["est_sent"]
+        } else {
+            &line["est"]
+        };
+        original.push(line["est"]["total"].as_f64().unwrap_or(0.0));
+        for key in ["hot_shortened", "warm_digested", "duplicates"] {
+            *shortened.entry(key).or_insert(0) += line["ccx"][key].as_u64().unwrap_or(0);
+        }
+        expand_rounds += line["expand_rounds"].as_u64().unwrap_or(0);
+        expand_calls += line["expand_calls"].as_u64().unwrap_or(0);
         let est_total = est["total"].as_f64().unwrap_or(0.0).max(1.0);
         let input = line["usage"]["input"].as_f64();
         let scale = input.map_or(1.0, |i| i / est_total);
@@ -89,6 +104,10 @@ pub fn summarize(lines: &[Value]) -> Value {
         "per_request_static": stats(statics),
         "per_request_dynamic": stats(dynamic),
         "composition_percent": composition,
+        "per_request_original_est": stats(original),
+        "shortened": shortened,
+        "expand_rounds": expand_rounds,
+        "expand_calls": expand_calls,
     })
 }
 
@@ -126,6 +145,15 @@ pub fn run(path: &Path, tag: Option<&str>, as_json: bool) -> Result<()> {
             s["mean"], s["p50"], s["p95"], s["max"]
         );
     }
+    let o = &summary["per_request_original_est"];
+    println!(
+        "{:<20} mean {:>8}  p50 {:>8}  p95 {:>8}  max {:>8}  (estimate, before ccx)",
+        "per_request_original", o["mean"], o["p50"], o["p95"], o["max"]
+    );
+    println!(
+        "shortened {}  expand rounds {}  calls {}",
+        summary["shortened"], summary["expand_rounds"], summary["expand_calls"]
+    );
     let parts: Vec<String> = CATEGORIES
         .iter()
         .map(|k| format!("{k} {}%", summary["composition_percent"][k]))

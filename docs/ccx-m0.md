@@ -83,6 +83,8 @@ CCX_HOME=bench/results/loca/ccx target/release/ccx report --tag loca-pilot-8k
 
 ## 5. 试点 A 结果（8K，每个任务 1 个 seed；2026-10-03）
 
+> **注意：这里的成功率无效。** 后来检查轨迹发现，8 次通过全部读过 LOCA 的评测代码或标准答案（主分支没有沙箱），详见 [ccx-m1.md](ccx-m1.md) 第 4 节。token 和上下文构成的数据仍然有参考价值。
+
 一共运行了三次，都通过 ccx 影子代理，用网关上的 gemini-3.8-flash-high：
 
 | 运行 | 内容 | 输入 token | 结束方式 |

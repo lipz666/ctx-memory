@@ -1,0 +1,94 @@
+{
+ "configurations": [
+  {
+   "env_class": "gem.envs.ab_testing_s2l.ab_testing_s2l.ABTestingS2LEnv",
+   "env_params": {
+    "num_scenarios": 10,
+    "num_days": 6,
+    "seed": 42
+   },
+   "mcp_servers": {
+    "google_cloud": {
+     "type": "google_cloud",
+     "enabled": true,
+     "params": {
+      "data_dir": "{task_workspace}/local_db/google_cloud"
+     }
+    },
+    "python_execute": {
+     "enabled": true,
+     "type": "python_execute",
+     "params": {
+      "workspace_dir": "{agent_workspace}"
+     }
+    },
+    "claim_done": {
+     "type": "claim_done",
+     "enabled": true,
+     "params": {}
+    },
+    "filesystem": {
+     "enabled": true,
+     "type": "filesystem",
+     "params": {
+      "workspace_path": "{agent_workspace}"
+     }
+    }
+   },
+   "name": "ABTestingS2LEnv"
+  },
+  {
+   "env_class": "gem.envs.set_conf_cr_ddl_s2l.set_conf_cr_ddl_s2l.SetConfCrDdlS2LEnv",
+   "env_params": {
+    "num_target": 4,
+    "num_noise": 4,
+    "noise_emails": 5,
+    "max_conferences": 200,
+    "enable_reminders": true,
+    "enable_extensions": true,
+    "base_date": "2025-09-15",
+    "deadline_offset": 15,
+    "seed": 42,
+    "verbose": false
+   },
+   "mcp_servers": {
+    "calendar": {
+     "type": "calendar",
+     "enabled": true,
+     "params": {
+      "data_dir": "{task_workspace}/local_db/calendar"
+     }
+    },
+    "email": {
+     "type": "email",
+     "enabled": true,
+     "params": {
+      "data_dir": "{task_workspace}/local_db/emails",
+      "email": "swright@mcp.com",
+      "password": "scotaW1MyWaw"
+     }
+    },
+    "python_execute": {
+     "type": "python_execute",
+     "enabled": true,
+     "params": {
+      "workspace_dir": "{agent_workspace}"
+     }
+    },
+    "claim_done": {
+     "type": "claim_done",
+     "enabled": true,
+     "params": {}
+    },
+    "filesystem": {
+     "type": "filesystem",
+     "enabled": true,
+     "params": {
+      "workspace_path": "{agent_workspace}"
+     }
+    }
+   },
+   "name": "SetConfCrDdlS2LEnv"
+  }
+ ]
+}

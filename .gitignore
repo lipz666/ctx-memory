@@ -34,3 +34,5 @@ bench/results/loca/*.log
 # BEAM comparison: memory stores built by each system (rebuildable, large) and SQLite WAL files
 bench/beam-*/
 bench/results/*.sqlite-*
+# ccx object stores hold full tool outputs (may include host details); never commit
+bench/results/**/objects/
