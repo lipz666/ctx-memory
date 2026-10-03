@@ -168,7 +168,7 @@ conflicts:
 
 ### 10.1 加入 Mem0 OSS 与 Cognee（同一开发集、同一答题和评判）
 
-Mem0 OSS 2.2.1（`bench/adapters/mem0_adapter.py` 的 `BeamMem0`，默认提炼与更新流程）；Cognee 1.6.2 照搬它官方的 BEAM 流程（`cognee/eval_framework/beam`：按轮次预处理、`local_ingest`、HybridRetriever chunks/entities 各 20，见 `bench/tools/cognee_beam.py`），每段对话一个独立实例。所有系统的嵌入都是本地 EmbeddingGemma。
+Mem0 OSS 2.2.1（`bench/adapters/mem0_adapter.py` 的 `BeamMem0`，默认提炼与更新流程）；Cognee 1.6.2 照搬它官方的 BEAM 流程（`cognee/eval_framework/beam`：按轮次预处理、`local_ingest`、HybridRetriever chunks/entities 各 20，见 `bench/tools/cognee_beam.py`），每段对话一个独立实例。Mem0、Cognee 的嵌入是本地 EmbeddingGemma；Hindsight 用它的默认本地模型（`BAAI/bge-small-en-v1.5` 嵌入、`cross-encoder/ms-marco-MiniLM-L-6-v2` 重排），不是 EmbeddingGemma。
 
 | 能力 | ctx-m v1 | ctx-m r2 | Hindsight 1k | Mem0 1k | Cognee 1k | Hindsight AMB | Mem0 8k | Cognee 官方 | ctx v0.5 |
 |---|---|---|---|---|---|---|---|---|---|

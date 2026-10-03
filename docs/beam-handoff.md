@@ -2,7 +2,7 @@
 
 ## 现在在哪
 
-BEAM 100K 开发集（对话 1–10，200 题）。所有系统的条件相同：写入、答题和评判都用 gemini-3.8-flash-high，嵌入都用本地 EmbeddingGemma，答题提示词和评分都用 BEAM 官方的。完整表格见 [ctx-m-design.md](ctx-m-design.md) 第 10 节。
+BEAM 100K 开发集（对话 1–10，200 题）。所有系统的条件相同：写入、答题和评判都用 gemini-3.8-flash-high，答题提示词和评分都用 BEAM 官方的。嵌入：Mem0、Cognee、ctx-m 用本地 EmbeddingGemma；Hindsight 用它的默认本地模型（bge-small-en-v1.5 嵌入 + MiniLM 交叉编码器重排），测试集保持一致。完整表格见 [ctx-m-design.md](ctx-m-design.md) 第 10 节。
 
 | 系统 | 约 1k 注入 | 各自官方配置 |
 |---|---|---|

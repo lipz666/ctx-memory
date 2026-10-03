@@ -5,7 +5,7 @@
 ## 统一条件
 
 - 写入、答题、评判都用同一个模型（`BENCH_MODEL`，默认 gemini-3.8-flash-high），走同一个网关（`BENCH_BASE_URL`），密钥只从环境变量 `CTX_GW_KEY` 读取，不写进任何文件。
-- 嵌入统一用 ctx 自带的本地 EmbeddingGemma，经 ctx 的 `/api/v1/embeddings` 提供。需要先 `cargo build --release`（`target/release/ctx`）。
+- 嵌入：Mem0、Cognee、ctx-m 用 ctx 自带的本地 EmbeddingGemma（经 ctx 的 `/api/v1/embeddings`，需要先 `cargo build --release`）。**Hindsight 例外**：用它 0.10.2 的默认本地模型，嵌入 `BAAI/bge-small-en-v1.5`（384 维）加重排 `cross-encoder/ms-marco-MiniLM-L-6-v2`（启动命令没有设 `HINDSIGHT_API_EMBEDDINGS_*`，开发集结果就是这样跑出来的；测试集要保持一致，不要加嵌入变量）。
 - 答题和评分统一用 BEAM 官方答题提示词和逐要点评判（`bench/tracks/beam.py`）。
 - 每个系统的写入流程和检索参数照搬它自己的 BEAM 配置。
 - 开发集：对话 1–10；测试集：对话 11–20（只在里程碑时跑）。
@@ -51,7 +51,7 @@ HINDSIGHT_API_LLM_MODEL=gemini-3.8-flash-high HINDSIGHT_API_LLM_API_KEY="$CTX_GW
 hindsight-venv/bin/hindsight-api
 ```
 
-不要让它监听 `0.0.0.0`：它没有鉴权。
+不要让它监听 `0.0.0.0`：它没有鉴权。嵌入和重排用默认的本地模型（见上方"统一条件"），首次启动会从 Hugging Face 下载。
 
 ## 运行测试集
 
