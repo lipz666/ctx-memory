@@ -1,0 +1,9 @@
+{
+  "time_utc": "2026-10-03T12:40:53Z",
+  "stage": "experiment",
+  "status": "completed",
+  "validated_configurations": 6,
+  "questions_per_configuration": 200,
+  "final_errors": 0,
+  "transport_failures_repaired": 1
+}

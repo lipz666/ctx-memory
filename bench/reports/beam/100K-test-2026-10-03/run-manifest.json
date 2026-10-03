@@ -1,0 +1,112 @@
+{
+  "source_branch": "ctx-m-prototype",
+  "source_commit": "4f088eeb2bb058c847193d0bb7940735ad298a88",
+  "source_snapshot": "/workspace/beam-test-20261003/source",
+  "scope": "BEAM 100K held-out conversations 11–20, three external systems only",
+  "conversation_ids": [
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20"
+  ],
+  "questions_per_configuration": 200,
+  "model": "gemini-3.8-flash-high",
+  "base_url": "https://vps.lpzproxy.xyz/v1",
+  "answer_salt": "",
+  "session_chars": 24000,
+  "bench_concurrency": 50,
+  "embedding": {
+    "mem0": "EmbeddingGemma 300M quantized, 768 dimensions",
+    "cognee": "EmbeddingGemma 300M quantized, 768 dimensions",
+    "hindsight": "BAAI/bge-small-en-v1.5, 384 dimensions"
+  },
+  "hindsight_reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+  "hindsight_alignment_evidence": "User confirmed both original service startup logs loaded BGE-small and MiniLM, overriding handoff prose saying all systems use EmbeddingGemma.",
+  "versions": {
+    "mem0ai": "2.2.1",
+    "cognee": "1.6.2",
+    "hindsight-all": "0.10.2",
+    "hindsight-client": "0.10.2"
+  },
+  "variants": {
+    "mem0-1k": {
+      "budget": 1000,
+      "workers": 5
+    },
+    "mem0-8k": {
+      "budget": 8000,
+      "workers": 5
+    },
+    "cognee-1k": {
+      "budget": 1000,
+      "workers": 2
+    },
+    "cognee-native": {
+      "budget": "unbounded HybridRetriever chunks_top_k=20 entities_top_k=20",
+      "workers": 2
+    },
+    "hindsight-1k": {
+      "max_tokens": 1000,
+      "include_chunks": false,
+      "workers": 5
+    },
+    "hindsight-amb": {
+      "max_tokens": 12288,
+      "include_chunks": true,
+      "max_chunk_tokens": 8192,
+      "workers": 5
+    }
+  },
+  "sha256": {
+    "bench/tracks/beam.py": "1b8930a43b7bcb586b162b2b8f8fbeb09fc2a15ba33921d8c83e765f6d743b80",
+    "bench/tracks/beam_official.py": "a46beb7f6e6aee2fedd4bc888913e232bc6def02d5f0e1cef44369d9a583cc61",
+    "bench/adapters/mem0_adapter.py": "5f6fa4046ff5a728f1cdf581403bcbed5dc7f30b6112610aeb7d8c990dbec6f1",
+    "bench/adapters/cognee.py": "ef9456dc33bff5383f5d57130b73c1ee74575ac2ddd37c3bf25ea752d04e9a91",
+    "bench/adapters/hindsight.py": "e1ec716f9b4858f7041122ab6f082066ef843834a0e6d1cd4f82d3baad94795c",
+    "bench/tools/cognee_beam.py": "3f48a3be58b333dcae2ad05a008522bdcea582605fac6fcc18ba779eb1da5ce3",
+    "bench/tools/cognee.env.sh": "13cc9c90691f5d9008f58d7fc46ae6d09b2c571b8d401370e4e57f3aa6fc1d21",
+    "bench/tools/run_beam_test_split.sh": "1174b0aecca77b574aa3cdf66f4b4d4a8a6bf1e9a4666a35c4fd9e5fed5a6f8c"
+  },
+  "dataset_sha256": "c0519be25907005ba873c927c50877471d550873039d96c041554d0075a78ace",
+  "binary_sha256": "1b0c4fb488d605111eaab050452b2a55f37d6b5af302e17905ae50f29d9bc679",
+  "python": "3.12.14",
+  "artifact_policy": "Gateway credential stays in process environment/memory; dataset, caches and memory stores are excluded from published result artifacts.",
+  "runtime_notes": [
+    "Exported source snapshot has no Git metadata; binary version says unknown. Exact source commit and binary/adapter hashes are recorded in this manifest.",
+    "Rust fastembed gives HF_HOME precedence over CTX_MODEL_DIR. A symlink in /workspace/.cache/huggingface points to the verified EmbeddingGemma cache. An initial service startup was stopped before any ingestion while correcting this cache lookup.",
+    "Experiment supervisor is detached; gateway key was passed only through non-echoed stdin into process environment.",
+    "An obsolete supervisor from the initial startup failure was discovered and terminated. Its partial Hindsight ingestion has no completion markers or scored rows and will be reset by the unchanged adapter before the official sequential run.",
+    "Cognee Ladybug default ~/.lbdb extension cache is mapped by symlink into a writable workspace cache; a local JSON extension loading preflight passed.",
+    "Cognee’s fixed 30-second LLM readiness probe timed out. The exact same Cognee LLMGateway call subsequently succeeded in 31.21 seconds (default aiohttp) and 19.25 seconds (httpx probe). Retain the default transport and set supported COGNEE_SKIP_CONNECTION_TEST=true after verified readiness. The incomplete Cognee store and logs were moved aside before restarting.",
+    "The gateway reports reasoning_tokens separately from completion_tokens in the preflight. Harness input/output counters do not account for all separately reported reasoning tokens, and Cognee/Hindsight internal ingestion/retrieval token usage is not fully represented in summary.json; these counters are not a complete billing total.",
+    "Native EmbeddingGemma runs through ONNX Runtime 1.28.0 from the official checksum-verified wheel. Original native runtime/transitive dependency freezes were not supplied; full local package freezes and direct pinned system versions are recorded."
+  ],
+  "question_alignment": {
+    "original_artifact": "bench/results/beam/100K-test/ctxm-v1-render.r2/rows.jsonl",
+    "result": "All 200 (conversation, ability, index, question) records exactly match the original held-out artifact. Scores were not used for tuning.",
+    "original_rows_sha256": "92082e765ec36238e47c20a9c1d85ec84d8f9872565fc840f312ba57b65f02cf",
+    "reference_sha256": "40084e103f5724d199ee101a3d318c2301aeaa7071219e5047115f25d28511d3"
+  },
+  "rubric_alignment": {
+    "non_event_questions_checked": 180,
+    "result": "All original per-item rubric lists match exactly. Event-ordering rows do not store the original reference list; original source and official dataset hash are recorded."
+  },
+  "harness_session_counts": {
+    "15": 20,
+    "14": 20,
+    "13": 23,
+    "19": 31,
+    "11": 36,
+    "16": 25,
+    "17": 23,
+    "18": 32,
+    "12": 37,
+    "20": 32
+  }
+}

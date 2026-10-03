@@ -1,0 +1,7 @@
+{
+  "failed_records_replaced": 1,
+  "successful_original_rows_unchanged": 199,
+  "initial_rows_exactly_reconstructable_from_final_plus_failure_audit": true,
+  "initial_rows_sha256": "ba35fed3521fa68881e086936fb3b265aa62fcece2601dca54635737126a569b",
+  "final_rows_sha256": "9199e64cd7fa5c3a78cb32ec3d41b7779f822aa7c8fb1403461674a54745cbb1"
+}

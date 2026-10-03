@@ -1,0 +1,70 @@
+{
+  "configuration": "cognee-native",
+  "original_errors": 1,
+  "repaired_questions": 1,
+  "repaired_identities": [
+    [
+      "14",
+      "event_ordering",
+      0
+    ]
+  ],
+  "initial_overall": 0.4666,
+  "final_overall": 0.4678,
+  "successful_original_rows_preserved": 199,
+  "recovery_wall_seconds": 313,
+  "attempts": [
+    {
+      "attempt": 1,
+      "ability": "event_ordering",
+      "conversations": [
+        "14"
+      ],
+      "summary": {
+        "system": "cognee-native",
+        "questions": 2,
+        "conversations": 1,
+        "overall": 0.1899,
+        "abilities": {
+          "event_ordering": 0.1899
+        },
+        "errors": 0,
+        "tau_nan": 0,
+        "budget_tokens": 1000,
+        "kept_tokens_mean": 17909,
+        "search_ms_p50": 7504.7,
+        "wall_seconds": 309,
+        "usage": {
+          "reader_judge": {
+            "calls": 53,
+            "input_tokens": 40206,
+            "output_tokens": 335
+          }
+        }
+      },
+      "command": [
+        "/workspace/beam-test-20261003/source/bench/.venv/bin/python",
+        "-m",
+        "tracks.beam",
+        "--split",
+        "100K",
+        "--conversations",
+        "14",
+        "--abilities",
+        "event_ordering",
+        "--out",
+        "/workspace/beam-test-20261003/recovery/cognee-native/attempt-1-event_ordering",
+        "--systems",
+        "cognee-native",
+        "--budget",
+        "1000",
+        "--workers",
+        "2",
+        "--workdir",
+        "/workspace/beam-test-20261003/source/bench/beam-cognee"
+      ]
+    }
+  ],
+  "policy": "Replace transport-failed records only. Re-execute the original runner’s smallest supported conversation/ability subset; preserve all successful original rows. Same memory store, source, prompts, model, scoring, cache and empty salt.",
+  "runner_questions_reexecuted": 2
+}

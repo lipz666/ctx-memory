@@ -1,0 +1,109 @@
+{
+  "cognee": {
+    "11": {
+      "sessions": 5,
+      "turns": 194,
+      "all_distillations_completed": true,
+      "distilled_documents": 38,
+      "report_sha256": "7e5ff0496bda165dce9202c719f3f7a3a23839c2e5c7099f762c910371463571"
+    },
+    "12": {
+      "sessions": 5,
+      "turns": 196,
+      "all_distillations_completed": true,
+      "distilled_documents": 58,
+      "report_sha256": "8ef4a2f0a6db84da6371738d73b0119439ec00968db44c439ff8dbc29722596a"
+    },
+    "13": {
+      "sessions": 5,
+      "turns": 155,
+      "all_distillations_completed": true,
+      "distilled_documents": 44,
+      "report_sha256": "ad8adab66554ba638961a0ee4a5dee47c7d0c83025741c532063f9ea2954da00"
+    },
+    "14": {
+      "sessions": 5,
+      "turns": 134,
+      "all_distillations_completed": true,
+      "distilled_documents": 24,
+      "report_sha256": "341ccf56753ccafd53dfbb2b3f9aa11f471c2236a8e2ec5946a428a911f3797c"
+    },
+    "15": {
+      "sessions": 5,
+      "turns": 136,
+      "all_distillations_completed": true,
+      "distilled_documents": 30,
+      "report_sha256": "268f9a2a78e508c596e553eeb950177e94397119885e3b804f7c9e5ae1d0ac9e"
+    },
+    "16": {
+      "sessions": 5,
+      "turns": 161,
+      "all_distillations_completed": true,
+      "distilled_documents": 56,
+      "report_sha256": "ffb6b85bd88eacc621a3c4f49c3b47f85acd00f966ed511a2e7e641829cba149"
+    },
+    "17": {
+      "sessions": 5,
+      "turns": 143,
+      "all_distillations_completed": true,
+      "distilled_documents": 44,
+      "report_sha256": "b948e67ab8cf05a997fc197164ac59ddaaa3e1c6d0c636b1eafafa5296bf01c2"
+    },
+    "18": {
+      "sessions": 5,
+      "turns": 181,
+      "all_distillations_completed": true,
+      "distilled_documents": 53,
+      "report_sha256": "b828ce77e70c2083cef1a2cf239e64b4d47d97f817e566cc5ce251e306a546ac"
+    },
+    "19": {
+      "sessions": 5,
+      "turns": 164,
+      "all_distillations_completed": true,
+      "distilled_documents": 42,
+      "report_sha256": "52a42d588c18ffc132cfc6bbab5a1399a4ff07863835ecbd29a561c4f20f4330"
+    },
+    "20": {
+      "sessions": 5,
+      "turns": 186,
+      "all_distillations_completed": true,
+      "distilled_documents": 34,
+      "report_sha256": "9e7ab00526c1396758b96acb2b84caaa3e7ee5a8c71a8891370e10b114b0b5a0"
+    }
+  },
+  "complete": true,
+  "sessions": 50,
+  "turns": 1650,
+  "mem0": {
+    "completed_conversations": [
+      "11",
+      "12",
+      "13",
+      "14",
+      "15",
+      "16",
+      "17",
+      "18",
+      "19",
+      "20"
+    ],
+    "successful_session_calls": 279,
+    "failed_sessions": 0
+  },
+  "hindsight": {
+    "successful_retains_per_conversation": {
+      "12": 37,
+      "13": 23,
+      "11": 36,
+      "14": 20,
+      "15": 20,
+      "16": 25,
+      "17": 23,
+      "18": 32,
+      "19": 31,
+      "20": 32
+    },
+    "sessions": 279,
+    "evidence_sha256": "4aeebe726ee9c7a8853aa394a790fe2e640b50e17b7f180e0af837f87c135cd2"
+  }
+}
